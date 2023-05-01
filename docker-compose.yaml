@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: outbox-postgres
+    restart: always
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: outbox
+
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    container_name: outbox-rabbitmq
+    restart: always
+    ports:
+      - "5677:5672"
+      - "15677:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
