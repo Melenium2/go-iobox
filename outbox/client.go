@@ -18,6 +18,6 @@ func NewClient(storage Inserter) *Client {
 	}
 }
 
-func (c *Client) WriteRecord(ctx context.Context, tx SQLConn, record *Record) error {
+func (c *Client) WriteOutbox(ctx context.Context, tx SQLConn, record *Record) error {
 	return c.storage.Insert(ctx, tx, record)
 }

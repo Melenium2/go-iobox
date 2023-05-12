@@ -16,8 +16,14 @@ type SQLConn interface {
 	QueryContext(ctx context.Context, sql string, args ...any) (*sql.Rows, error)
 }
 
+type Logger interface {
+	Print(...any)
+	Printf(string, ...any)
+}
+
 type Outbox struct {
 	broker Broker
+	logger Logger
 
 	storage *defaultStorage
 	config  config
@@ -32,6 +38,7 @@ func NewOutbox(broker Broker, conn SQLConn, opts ...Option) *Outbox {
 
 	return &Outbox{
 		broker:  broker,
+		logger:  defaultCfg.logger,
 		storage: newStorage(conn),
 		config:  defaultCfg,
 	}
@@ -60,7 +67,7 @@ func (o *Outbox) run() {
 
 	for range ticker.C {
 		if err := o.iteration(context.Background()); err != nil {
-			// todo may be log here.
+			o.logger.Print(err.Error())
 		}
 	}
 }
@@ -110,7 +117,10 @@ func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
 	}
 
 	if len(success)+len(fail) != len(records) {
-		// todo remove this condition or maybe write log.
+		o.logger.Printf(
+			"count of recrods does not match, len %d, success %d, fail %d",
+			len(records), len(success), len(fail),
+		)
 	}
 
 	if err := o.storage.Update(ctx, success); err != nil {

@@ -1,4 +1,4 @@
-package outbox
+package inbox
 
 import (
 	"log"
@@ -6,23 +6,26 @@ import (
 )
 
 const (
-	DefaultIterationRate = 5 * time.Second
-	DebugMode            = false
+	DefaultIterationRate  = 5 * time.Second
+	DefaultHandlerTimeout = 10 * time.Second
+	DebugMode             = false
 )
 
 var DefaultLogger = log.Default()
 
 type config struct {
-	iterationRate time.Duration
-	logger        Logger
-	debugMode     bool
+	iterationRate  time.Duration
+	handlerTimeout time.Duration
+	logger         Logger
+	debugMode      bool
 }
 
 func defaultConfig() config {
 	return config{
-		iterationRate: DefaultIterationRate,
-		logger:        DefaultLogger,
-		debugMode:     DebugMode,
+		iterationRate:  DefaultIterationRate,
+		handlerTimeout: DefaultHandlerTimeout,
+		logger:         DefaultLogger,
+		debugMode:      DebugMode,
 	}
 }
 

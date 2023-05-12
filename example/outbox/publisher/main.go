@@ -9,7 +9,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Melenium2/ioprocessor/outbox"
+	"github.com/Melenium2/go-iobox/outbox"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -128,7 +128,7 @@ func (p *InifinityPublishCycle) Start() {
 
 		rec := outbox.NewRecord(uuid.New(), "outbox", &b)
 
-		err := p.client.WriteRecord(ctx, p.db, rec)
+		err := p.client.WriteOutbox(ctx, p.db, rec)
 		if err != nil {
 			log.Fatal(err)
 		}

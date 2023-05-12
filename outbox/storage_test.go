@@ -9,7 +9,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/Melenium2/ioprocessor/outbox"
+	"github.com/Melenium2/go-iobox/outbox"
 )
 
 type StorageSuite struct {
