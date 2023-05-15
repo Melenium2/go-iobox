@@ -62,6 +62,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 			" 			status = $1, " +
 			"			updated_at = (now() at time zone 'utc') " +
 			" 		where id in ($2);"
+
 		recordsStatus sql.NullString
 	)
 
@@ -81,7 +82,8 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 }
 
 func (s *defaultStorage) Insert(ctx context.Context, tx SQLConn, record *Record) error {
-	sqlStr := "insert into __outbox_table (id, event_type, payload) values ($1, $2, $3);"
+	sqlStr := "insert into __outbox_table (id, event_type, payload) values ($1, $2, $3) " +
+		" on conflict do nothing;"
 
 	payload, err := record.payload.MarshalJSON()
 	if err != nil {

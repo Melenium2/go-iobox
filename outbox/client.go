@@ -4,6 +4,8 @@ import (
 	"context"
 )
 
+// Client provides possibility to set outbox record to the outbox table.
+// Insertion must be in the same transaction as the produced action.
 type Client interface {
 	WriteOutbox(context.Context, SQLConn, *Record) error
 }

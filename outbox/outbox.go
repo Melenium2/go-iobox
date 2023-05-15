@@ -21,6 +21,15 @@ type Logger interface {
 	Printf(string, ...any)
 }
 
+// Outbox is struct that implement of outbox pattern.
+//
+// Writing all outgoing events in a temporary table in the same transaction
+// in which we process the action associated with this event.
+// Then we try to publish the event in the broker with specific timeout
+// until the event is sent.
+//
+// More about outbox pattern you can read at
+// https://microservices.io/patterns/data/transactional-outbox.html.
 type Outbox struct {
 	broker Broker
 	logger Logger
@@ -29,6 +38,7 @@ type Outbox struct {
 	config  config
 }
 
+// NewOutbox creates new outbox implementation.
 func NewOutbox(broker Broker, conn SQLConn, opts ...Option) *Outbox {
 	defaultCfg := defaultConfig()
 
@@ -44,12 +54,13 @@ func NewOutbox(broker Broker, conn SQLConn, opts ...Option) *Outbox {
 	}
 }
 
+// Writer creates new Client to write outgoing events to the temporary table.
 func (o *Outbox) Writer() Client {
 	return newClient(o.storage)
 }
 
-// Start initialize outbox table and start worker process. Worker porcess
-// is process that send incoming outbox messages to broker.
+// Start initialize outbox table and start worker process. Worker
+// is process that send outgoing messages to broker.
 //
 // Start function blocks current thread.
 func (o *Outbox) Start(ctx context.Context) error {
@@ -62,6 +73,7 @@ func (o *Outbox) Start(ctx context.Context) error {
 	return nil
 }
 
+// run starts the publishing process.
 func (o *Outbox) run() {
 	ticker := time.NewTicker(o.config.iterationRate)
 
@@ -72,6 +84,8 @@ func (o *Outbox) run() {
 	}
 }
 
+// iteration tries to send events to the broker, if operation was successful
+// updates status in the outbox table.
 func (o *Outbox) iteration(ctx context.Context) error {
 	records, err := o.storage.Fetch(ctx)
 	if err != nil {
@@ -118,7 +132,7 @@ func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
 
 	if len(success)+len(fail) != len(records) {
 		o.logger.Printf(
-			"count of recrods does not match, len %d, success %d, fail %d",
+			"count of records does not match, len %d, success %d, fail %d",
 			len(records), len(success), len(fail),
 		)
 	}

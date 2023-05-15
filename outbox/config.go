@@ -6,8 +6,16 @@ import (
 )
 
 const (
+	// DefaultIterationRate is a timeout after which all outbox events
+	// in the outbox table are sent to the broker.
+	//
+	// Default: 5 * time.Second.
 	DefaultIterationRate = 5 * time.Second
-	DebugMode            = false
+	// DebugMode enables additional logs for debug outbox process.
+	// Now, this option do nothing.
+	//
+	// Default: false.
+	DebugMode = false
 )
 
 var DefaultLogger = log.Default()
@@ -26,8 +34,11 @@ func defaultConfig() config {
 	}
 }
 
+// Option sets specific configuration to the Outbox.
 type Option func(config) config
 
+// WithIterationRate sets new interval for sending events from the
+// outbox table.
 func WithIterationRate(dur time.Duration) Option {
 	return func(c config) config {
 		c.iterationRate = dur
@@ -36,6 +47,7 @@ func WithIterationRate(dur time.Duration) Option {
 	}
 }
 
+// WithLogger sets custom implementation of Logger.
 func WithLogger(logger Logger) Option {
 	return func(c config) config {
 		c.logger = logger
