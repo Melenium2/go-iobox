@@ -8,7 +8,7 @@ func NewStorage(conn SQLConn) *Storage {
 	return newStorage(conn)
 }
 
-func NewClient(storage *Storage, handlers map[string][]Handler) *Client {
+func NewClient(storage *Storage, handlers map[string][]Handler) Client {
 	return newClient(storage, handlers)
 }
 

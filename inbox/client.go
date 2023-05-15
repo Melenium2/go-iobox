@@ -2,12 +2,16 @@ package inbox
 
 import "context"
 
-type Client struct {
+type Client interface {
+	WriteInbox(context.Context, *Record) error
+}
+
+type client struct {
 	storage  *defaultStorage
 	handlers map[string][]string
 }
 
-func newClient(storage *defaultStorage, handlers map[string][]Handler) *Client {
+func newClient(storage *defaultStorage, handlers map[string][]Handler) *client {
 	handlerKeys := make(map[string][]string, len(handlers))
 
 	for eventType, handlerList := range handlers {
@@ -20,13 +24,13 @@ func newClient(storage *defaultStorage, handlers map[string][]Handler) *Client {
 		handlerKeys[eventType] = keys
 	}
 
-	return &Client{
+	return &client{
 		storage:  storage,
 		handlers: handlerKeys,
 	}
 }
 
-func (c *Client) WriteInbox(ctx context.Context, record *Record) error {
+func (c *client) WriteInbox(ctx context.Context, record *Record) error {
 	keys := c.handlers[record.eventType]
 
 	records := make([]*Record, 0, len(keys))

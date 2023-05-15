@@ -40,7 +40,7 @@ func NewInbox(registry *Registry, conn SQLConn, opts ...Option) *Inbox {
 	}
 }
 
-func (i *Inbox) Writer() *Client {
+func (i *Inbox) Writer() Client {
 	return newClient(i.storage, i.handlers)
 }
 

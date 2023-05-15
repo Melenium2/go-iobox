@@ -52,6 +52,6 @@ func (c *RandomConsumer) Consume() {
 	for next := range ch {
 		log.Printf("next arrived message: %s", next.Body)
 
-		next.Ack(false)
+		_ = next.Ack(false)
 	}
 }

@@ -106,11 +106,11 @@ func (b *body) MarshalJSON() ([]byte, error) {
 
 type InifinityPublishCycle struct {
 	interval time.Duration
-	client   *outbox.Client
+	client   outbox.Client
 	db       *sql.DB
 }
 
-func NewInfinityPublishCycle(interval time.Duration, client *outbox.Client, conn *sql.DB) *InifinityPublishCycle {
+func NewInfinityPublishCycle(interval time.Duration, client outbox.Client, conn *sql.DB) *InifinityPublishCycle {
 	return &InifinityPublishCycle{
 		interval: interval,
 		client:   client,

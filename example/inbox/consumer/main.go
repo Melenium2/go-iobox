@@ -50,12 +50,12 @@ func main() {
 	registy := inbox.NewRegistry()
 	{
 		registy.On("multy-handlers", &firstMultiHandler{}, &secondMultiHandler{})
-		registy.On("single-handler", &singleHandler{})
+		registy.On("single-handlen", &singleHandler{})
 	}
 
 	inboxStorage := inbox.NewInbox(registy, db)
 
-	inboxStorage.Start(context.Background())
+	_ = inboxStorage.Start(context.Background())
 
 	consumer.Consume(inboxStorage.Writer())
 }
@@ -96,7 +96,7 @@ type rawBody struct {
 	ID uuid.UUID `json:"id"`
 }
 
-func (c *RandomConsumer) Consume(writer *inbox.Client) {
+func (c *RandomConsumer) Consume(writer inbox.Client) {
 	ch1, _ := c.cc.Consume("multy-handlers", "", false, false, false, false, nil)
 	ch2, _ := c.cc.Consume("single-handler", "", false, false, false, false, nil)
 
@@ -109,9 +109,9 @@ func (c *RandomConsumer) Consume(writer *inbox.Client) {
 
 			log.Printf("write event from multy-handlers")
 
-			writer.WriteInbox(context.Background(), record)
+			_ = writer.WriteInbox(context.Background(), record)
 
-			body.Ack(false)
+			_ = body.Ack(false)
 		case body := <-ch2:
 			event := c.parse(body.Body)
 
@@ -119,9 +119,9 @@ func (c *RandomConsumer) Consume(writer *inbox.Client) {
 
 			log.Printf("write event from single-handler")
 
-			writer.WriteInbox(context.Background(), record)
+			_ = writer.WriteInbox(context.Background(), record)
 
-			body.Ack(false)
+			_ = body.Ack(false)
 		}
 	}
 }

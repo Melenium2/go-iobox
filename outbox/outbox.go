@@ -44,8 +44,8 @@ func NewOutbox(broker Broker, conn SQLConn, opts ...Option) *Outbox {
 	}
 }
 
-func (o *Outbox) Writer() *Client {
-	return NewClient(o.storage)
+func (o *Outbox) Writer() Client {
+	return newClient(o.storage)
 }
 
 // Start initialize outbox table and start worker process. Worker porcess
