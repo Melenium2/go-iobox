@@ -21,11 +21,11 @@ type Logger interface {
 	Printf(string, ...any)
 }
 
-// Outbox is struct that implement of outbox pattern.
+// Outbox is struct that implement outbox pattern.
 //
 // Writing all outgoing events in a temporary table in the same transaction
 // in which we process the action associated with this event.
-// Then we try to publish the event in the broker with specific timeout
+// Then we try to publish the event to the broker with specific timeout
 // until the event is sent.
 //
 // More about outbox pattern you can read at
@@ -65,7 +65,7 @@ func (o *Outbox) Writer() Client {
 // Start function blocks current thread.
 func (o *Outbox) Start(ctx context.Context) error {
 	if err := o.storage.InitOutboxTable(ctx); err != nil {
-		return fmt.Errorf("can not initialize outbox table, stroage return err: %w", err)
+		return fmt.Errorf("can not initialize outbox table, storage return err: %w", err)
 	}
 
 	go o.run()

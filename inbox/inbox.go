@@ -18,6 +18,15 @@ type Logger interface {
 	Printf(string, ...any)
 }
 
+// Inbox is struct that implement inbox pattern.
+//
+// Writing all incoming events in a temporary table to future processing.
+// Then we try to process each event with the provided handlers.
+// In addition, Inbox filters new events. All events with the same event_id
+// will be ignored.
+//
+// More about inbox pattern you can read at
+// https://softwaremill.com/microservices-101.
 type Inbox struct {
 	handlers map[string][]Handler
 	storage  *defaultStorage
