@@ -61,8 +61,6 @@ func (o *Outbox) Writer() Client {
 
 // Start initialize outbox table and start worker process. Worker
 // is process that send outgoing messages to broker.
-//
-// Start function blocks current thread.
 func (o *Outbox) Start(ctx context.Context) error {
 	if err := o.storage.InitOutboxTable(ctx); err != nil {
 		return fmt.Errorf("can not initialize outbox table, storage return err: %w", err)

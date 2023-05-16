@@ -49,10 +49,13 @@ func NewInbox(registry *Registry, conn SQLConn, opts ...Option) *Inbox {
 	}
 }
 
+// Writer creates new Client to store incoming events to the temporary table.
 func (i *Inbox) Writer() Client {
 	return newClient(i.storage, i.handlers)
 }
 
+// Start creates new inbox table if it not created and starts worker
+// which process records from the table.
 func (i *Inbox) Start(ctx context.Context) error {
 	if err := i.storage.InitInboxTable(ctx); err != nil {
 		return err
@@ -73,6 +76,13 @@ func (i *Inbox) run() {
 	}
 }
 
+// iteration fetches all incoming events from a temporary table
+// and trying to process it. In some cases the worker can not process
+// incoming events. 1) If we received an unknown event_type. 2) If the handler with
+// required key not found in the Registry. In this cases we skip
+// current record and sets its status to Null. In the next iteration
+// we again try to handle the event. In other cases we set Fail or
+// Done status to the record depends on in the result of handler.
 func (i *Inbox) iteration() error {
 	ctx := context.Background()
 

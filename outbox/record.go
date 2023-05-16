@@ -58,7 +58,7 @@ func (r *Record) Done() {
 	r.status = Done
 }
 
-// Fail sets Failed status to current Rectod. Status will be
+// Fail sets Failed status to current Record. Status will be
 // ignored on first save to the outbox table.
 func (r *Record) Fail() {
 	r.status = Failed
