@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	// DefaultIterationRate is a timeout after which all outbox events
+	// DefaultIterationRate is the timeout after which all outbox events
 	// in the outbox table are sent to the broker.
 	//
 	// Default: 5 * time.Second.

@@ -2,6 +2,8 @@ package inbox
 
 import "context"
 
+// Client provides possibility to set records to the inbox table.
+// All records will be processed in the future.
 type Client interface {
 	WriteInbox(context.Context, *Record) error
 }

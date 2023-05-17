@@ -10,7 +10,7 @@ import (
 type Status string
 
 const (
-	// Progress means the current Record is process by outbox worker.
+	// Progress means the current Record is processed by outbox worker.
 	Progress Status = "progress"
 	// Failed means the current Record not processed by worker by specific
 	// reason.

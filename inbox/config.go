@@ -6,9 +6,21 @@ import (
 )
 
 const (
-	DefaultIterationRate  = 5 * time.Second
+	// DefaultIterationRate is the timeout after which all events
+	// in the inbox table will be processed.
+	//
+	// Default: 5 * time.Second.
+	DefaultIterationRate = 5 * time.Second
+	// DefaultHandlerTimeout is the timeout after which the handler
+	// will be stopped and the status will be set as Fail.
+	//
+	// Default: 10 * time.Second.
 	DefaultHandlerTimeout = 10 * time.Second
-	DebugMode             = false
+	// DebugMode enables additional logs for debug inbox process.
+	// Now, this option do nothing.
+	//
+	// Default: false.
+	DebugMode = false
 )
 
 var DefaultLogger = log.Default()
@@ -29,8 +41,10 @@ func defaultConfig() config {
 	}
 }
 
+// Option sets specific configuration to the Inbox.
 type Option func(config) config
 
+// WithIterationRate sets new interval for process all inbox events.
 func WithIterationRate(dur time.Duration) Option {
 	return func(c config) config {
 		c.iterationRate = dur
@@ -39,6 +53,16 @@ func WithIterationRate(dur time.Duration) Option {
 	}
 }
 
+// WithHandlerTimeout sets new interval after which handler will be stopped.
+func WithHandlerTimeout(dur time.Duration) Option {
+	return func(c config) config {
+		c.handlerTimeout = dur
+
+		return c
+	}
+}
+
+// WithLogger sets custom implementation of Logger.
 func WithLogger(logger Logger) Option {
 	return func(c config) config {
 		c.logger = logger
