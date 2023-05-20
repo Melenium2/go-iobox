@@ -91,7 +91,7 @@ func main() {
     inboxStorage := inbox.NewInbox(registy, db)
 
     // Start the inbox process. Function also initialize the inbox message table if it does not exists.
-	_ = inboxStorage.Start(context.Background())
+    _ = inboxStorage.Start(context.Background())
 
     // ...
 
