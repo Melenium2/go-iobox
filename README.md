@@ -32,7 +32,7 @@ If received messages have any kind of unique key, they can be deduplicated befor
 Repeated messages can be caused by the crash of the recipient just after saving the row to the table, 
 but before sending a successful ack.
 
-[Source][https://softwaremill.com/microservices-101/#inbox-pattern]
+[Source](https://softwaremill.com/microservices-101/#inbox-pattern)
 
 ## Install
 
