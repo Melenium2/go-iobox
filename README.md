@@ -55,14 +55,14 @@ func main() {
 
     // Create new outbox proccessor. Set the broker dependency to publish events 
     // and the database connection.
-	ob := outbox.NewOutbox(broker, db)
+    ob := outbox.NewOutbox(broker, db)
 
     // Start the outbox processor. Function also intialize the outbox message table if it does not exists.
-	if err = ob.Start(context.Background()); err != nil {
-		log.Fatal(err)
-	}
+    if err = ob.Start(context.Background()); err != nil {
+    	log.Fatal(err)
+    }
 
-    ...
+    // ...
 
     // Outbox also provides the Client that saves outgoing events to the temporary table.
     // You should use it to push new messages to processor for future publishing.
