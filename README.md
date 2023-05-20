@@ -72,4 +72,32 @@ func main() {
 
 ### Inbox
 
-...
+Full example of code you can saw [here](https://github.com/Melenium2/go-iobox/blob/master/example/inbox/consumer/main.go)
+
+```go
+func main() {
+    // Register handlers for executing on received events.
+    registy := inbox.NewRegistry()
+    {
+    // On each event with event type "multy-handlers" both handlers will be executed.
+    // Each handler has its own unique key to handle status independently.
+    	registy.On("multy-handlers", &firstMultiHandler{}, &secondMultiHandler{})
+    	registy.On("single-handlen", &singleHandler{})
+    }
+    
+    db := NewDbConn()
+
+    // Initialize new inbox processor.
+    inboxStorage := inbox.NewInbox(registy, db)
+
+    // Start the inbox process. Function also initialize the inbox message table if it does not exists.
+	_ = inboxStorage.Start(context.Background())
+
+    // ...
+
+    // Inbox processor provides the client for saving incoming messages for future handling.
+    // If you are trying to save messages with same event_id, then all messages after first
+    // record will be ignored.
+    inboxClient := inboxStorage.Writer()
+}
+```
