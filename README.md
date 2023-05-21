@@ -57,7 +57,8 @@ func main() {
     // and the database connection.
     ob := outbox.NewOutbox(broker, db)
 
-    // Start the outbox processor. Function also intialize the outbox message table if it does not exists.
+    // Start the outbox processor. Function also intialize the outbox message 
+    // table if it does not exists.
     if err = ob.Start(context.Background()); err != nil {
     	log.Fatal(err)
     }
@@ -90,7 +91,8 @@ func main() {
     // Initialize new inbox processor.
     inboxStorage := inbox.NewInbox(registy, db)
 
-    // Start the inbox process. Function also initialize the inbox message table if it does not exists.
+    // Start the inbox process. Function also initialize the inbox 
+    // message table if it does not exists.
     _ = inboxStorage.Start(context.Background())
 
     // ...
