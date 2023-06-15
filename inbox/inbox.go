@@ -4,14 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"time"
-)
 
-//go:generate mockery --name SQLConn
-type SQLConn interface {
-	ExecContext(context.Context, string, ...any) (sql.Result, error)
-	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
-	PrepareContext(context.Context, string) (*sql.Stmt, error)
-}
+	"github.com/Melenium2/go-iobox/backoff"
+)
 
 type Logger interface {
 	Print(...any)
@@ -32,9 +27,10 @@ type Inbox struct {
 	storage  *defaultStorage
 	logger   Logger
 	config   config
+	backoff  *backoff.Backoff
 }
 
-func NewInbox(registry *Registry, conn SQLConn, opts ...Option) *Inbox {
+func NewInbox(registry *Registry, conn *sql.DB, opts ...Option) *Inbox {
 	cfg := defaultConfig()
 
 	for _, opt := range opts {
@@ -46,6 +42,7 @@ func NewInbox(registry *Registry, conn SQLConn, opts ...Option) *Inbox {
 		storage:  newStorage(conn),
 		logger:   cfg.logger,
 		config:   cfg,
+		backoff:  backoff.NewBackoff(),
 	}
 }
 
@@ -55,23 +52,29 @@ func (i *Inbox) Writer() Client {
 }
 
 // Start creates new inbox table if it not created and starts worker
-// which process records from the table.
+// which process records from the table. To stop inbox worker, you can
+// call context close() function.
 func (i *Inbox) Start(ctx context.Context) error {
 	if err := i.storage.InitInboxTable(ctx); err != nil {
 		return err
 	}
 
-	go i.run()
+	go i.run(ctx)
 
 	return nil
 }
 
-func (i *Inbox) run() {
+func (i *Inbox) run(ctx context.Context) {
 	ticker := time.NewTicker(i.config.iterationRate)
 
-	for range ticker.C {
-		if err := i.iteration(); err != nil {
-			i.logger.Print(err.Error())
+	for {
+		select {
+		case <-ticker.C:
+			if err := i.iteration(); err != nil {
+				i.logger.Print(err.Error())
+			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }
@@ -86,7 +89,7 @@ func (i *Inbox) run() {
 func (i *Inbox) iteration() error {
 	ctx := context.Background()
 
-	records, err := i.storage.Fetch(ctx)
+	records, err := i.storage.Fetch(ctx, time.Now().UTC())
 	if err != nil {
 		return err
 	}
@@ -107,7 +110,7 @@ func (i *Inbox) iteration() error {
 		}
 
 		if err = i.process(ctx, handler, record.payload); err != nil {
-			record.Fail()
+			record = i.failOrDead(record, err)
 
 			continue
 		}
@@ -115,7 +118,7 @@ func (i *Inbox) iteration() error {
 		record.Done()
 	}
 
-	return i.updateStatus(ctx, records)
+	return i.storage.Update(ctx, records)
 }
 
 func (i *Inbox) lookForHandler(handlerKey string, handlers []Handler) (Handler, bool) {
@@ -135,34 +138,20 @@ func (i *Inbox) process(ctx context.Context, handler Handler, payload []byte) er
 	return handler.Process(ctx, payload)
 }
 
-func (i *Inbox) updateStatus(ctx context.Context, records []*Record) error {
-	success := make([]*Record, 0)
-	fail := make([]*Record, 0)
+func (i *Inbox) failOrDead(record *Record, err error) *Record {
+	record.Fail(err)
 
-	for _, record := range records {
-		if record.status == Done {
-			success = append(success, record)
-		}
+	attempt := record.Attempt()
 
-		if record.status == Failed {
-			fail = append(fail, record)
-		}
+	if attempt >= i.config.maxRetryAttempts {
+		record.Dead()
+
+		return record
 	}
 
-	if len(success)+len(fail) != len(records) {
-		i.logger.Printf(
-			"count of recrods does not match, len %d, success %d, fail %d",
-			len(records), len(success), len(fail),
-		)
-	}
+	dur := i.backoff.Next(attempt)
 
-	if err := i.storage.Update(ctx, success); err != nil {
-		return err
-	}
+	record.CalcNewDeadline(dur)
 
-	if err := i.storage.Update(ctx, fail); err != nil {
-		return err
-	}
-
-	return nil
+	return record
 }

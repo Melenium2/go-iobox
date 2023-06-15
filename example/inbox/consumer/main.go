@@ -55,7 +55,12 @@ func main() {
 
 	inboxStorage := inbox.NewInbox(registy, db)
 
-	_ = inboxStorage.Start(context.Background())
+	err = inboxStorage.Start(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("started")
 
 	consumer.Consume(inboxStorage.Writer())
 }
