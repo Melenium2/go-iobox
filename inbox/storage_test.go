@@ -3,8 +3,10 @@ package inbox_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	_ "github.com/lib/pq"
 
@@ -63,7 +65,7 @@ func (suite *StorageSuite) TestFetch_Should_fetch_unprocessed_rows_and_set_new_s
 		inbox.Record2(),
 	}
 
-	result, err := suite.storage.Fetch(ctx)
+	result, err := suite.storage.Fetch(ctx, time.Time{})
 	suite.Require().NoError(err)
 	suite.Assert().Equal(expected, result)
 }
@@ -73,7 +75,7 @@ func (suite *StorageSuite) TestFetch_Should_no_fetch_rows_because_table_are_empt
 
 	truncateTable(suite.db)
 
-	_, err := suite.storage.Fetch(ctx)
+	_, err := suite.storage.Fetch(ctx, time.Time{})
 	suite.Require().ErrorIs(err, inbox.ErrNoRecords)
 }
 
@@ -82,7 +84,7 @@ func (suite *StorageSuite) TestFetch_Should_no_fetch_rows_because_they_are_locke
 
 	ctx := context.Background()
 
-	_, err := suite.storage.Fetch(ctx)
+	_, err := suite.storage.Fetch(ctx, time.Time{})
 	suite.Require().ErrorIs(err, inbox.ErrNoRecords)
 }
 
@@ -91,7 +93,7 @@ func (suite *StorageSuite) TestFetch_Should_no_fetch_rows_if_all_rows_already_pr
 
 	ctx := context.Background()
 
-	_, err := suite.storage.Fetch(ctx)
+	_, err := suite.storage.Fetch(ctx, time.Time{})
 	suite.Require().ErrorIs(err, inbox.ErrNoRecords)
 }
 
@@ -101,7 +103,7 @@ func (suite *StorageSuite) TestUpdate_Should_update_provided_records_with_new_st
 	ctx := context.Background()
 
 	record := inbox.Record1()
-	record.Fail()
+	record.Fail(errors.New("err"))
 
 	err := suite.storage.Update(ctx, []*inbox.Record{record})
 	suite.Require().NoError(err)

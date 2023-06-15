@@ -3,47 +3,50 @@ package inbox
 import (
 	"context"
 	"database/sql"
+	"time"
+
+	"github.com/Melenium2/go-iobox/migration"
 )
 
 type defaultStorage struct {
-	conn SQLConn
+	conn *sql.DB
 }
 
-func newStorage(conn SQLConn) *defaultStorage {
+func newStorage(conn *sql.DB) *defaultStorage {
 	return &defaultStorage{
 		conn: conn,
 	}
 }
 
 func (s *defaultStorage) InitInboxTable(ctx context.Context) error {
-	sql := "create table if not exists __inbox_table " +
-		" 	(" +
-		" 		id varchar(36) not null," +
-		" 		status varchar(12)," +
-		" 		event_type varchar(255) not null," +
-		" 		handler_key varchar(255) not null, " +
-		" 		payload bytea not null default '{}'::bytea," +
-		" 		created_at timestamp not null default (now() at time zone 'utc')," +
-		" 		updated_at timestamp not null default (now() at time zone 'utc')" +
-		" 	);" +
-		"" +
-		"create unique index if not exists __inbox_uniq_id_handler_key_idx on __inbox_table (id, handler_key);"
+	m := migration.New()
 
-	_, err := s.conn.ExecContext(ctx, sql)
+	if err := m.Setup(ctx, s.conn, "inbox/migrations", "inbox_schema"); err != nil {
+		return err
+	}
+
+	err := m.Up()
+	if err == nil {
+		return nil
+	}
+
+	_ = m.Down()
 
 	return err
 }
 
-func (s *defaultStorage) Fetch(ctx context.Context) ([]*Record, error) {
+func (s *defaultStorage) Fetch(ctx context.Context, fetchTime time.Time) ([]*Record, error) {
 	dest := make([]*dtoRecord, 0)
 
 	sqlStr := "update __inbox_table set " +
 		" 				status = $1," +
 		" 				updated_at = (now() at time zone 'utc') " +
-		" 		where status is null " +
-		" 		returning id, status, event_type, handler_key, payload;"
+		" 		where " +
+		" 			status is null or " +
+		" 			(status = 'failed' and next_attempt <= $2) " +
+		" 		returning id, status, event_type, handler_key, payload, attempt;"
 
-	if err := s.selectRows(ctx, s.conn, &dest, sqlStr, Progress); err != nil {
+	if err := s.selectRows(ctx, s.conn, &dest, sqlStr, Progress, fetchTime); err != nil {
 		return nil, err
 	}
 
@@ -61,8 +64,11 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 
 	sqlStr := "update __inbox_table set " +
 		" 			status = $1, " +
+		" 			attempt = $2, " +
+		" 			error_message = $3, " +
+		" 			next_attempt = $4, " +
 		"			updated_at = (now() at time zone 'utc') " +
-		" 		where id = $2 and handler_key = $3;"
+		" 		where id = $5 and handler_key = $6;"
 
 	stmt, err := s.conn.PrepareContext(ctx, sqlStr)
 	if err != nil {
@@ -72,7 +78,11 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 	defer stmt.Close()
 
 	for i := 0; i < len(records); i++ {
-		var recordStatus sql.NullString
+		var (
+			recordStatus    sql.NullString
+			errorMessage    sql.NullString
+			attemptDeadline sql.NullTime
+		)
 
 		curr := records[i]
 
@@ -80,7 +90,23 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 			recordStatus = sql.NullString{String: string(curr.status), Valid: true}
 		}
 
-		_, err = stmt.ExecContext(ctx, recordStatus, curr.id, curr.handlerKey)
+		if curr.attempt.message != "" {
+			errorMessage = sql.NullString{String: curr.attempt.message, Valid: true}
+		}
+
+		if !curr.attempt.nextAttempt.IsZero() {
+			attemptDeadline = sql.NullTime{Time: curr.attempt.nextAttempt, Valid: true}
+		}
+
+		_, err = stmt.ExecContext(
+			ctx,
+			recordStatus,
+			curr.attempt.attempt,
+			errorMessage,
+			attemptDeadline,
+			curr.id,
+			curr.handlerKey,
+		)
 		if err != nil {
 			return err
 		}
@@ -101,7 +127,7 @@ func (s *defaultStorage) Insert(ctx context.Context, record *Record) error {
 }
 
 func (s *defaultStorage) selectRows(
-	ctx context.Context, conn SQLConn, dest *[]*dtoRecord, sqlStr string, args ...any,
+	ctx context.Context, conn *sql.DB, dest *[]*dtoRecord, sqlStr string, args ...any,
 ) error {
 	rows, err := conn.QueryContext(ctx, sqlStr, args...)
 	if err != nil {
@@ -116,14 +142,15 @@ func (s *defaultStorage) selectRows(
 		eventType  string
 		handlerKey string
 		payload    []byte
+		attempt    int
 	)
 	for rows.Next() {
-		err = rows.Scan(&id, &status, &eventType, &handlerKey, &payload)
+		err = rows.Scan(&id, &status, &eventType, &handlerKey, &payload, &attempt)
 		if err != nil {
 			return err
 		}
 
-		*dest = append(*dest, newDtoRecord(id, status.String, eventType, handlerKey, payload))
+		*dest = append(*dest, newDtoRecord(id, status.String, eventType, handlerKey, payload, attempt))
 	}
 
 	return nil

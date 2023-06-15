@@ -2,6 +2,7 @@ package inbox
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -19,7 +20,15 @@ const (
 	Done Status = "done"
 	// Null means the current Record is not processed yet.
 	Null Status = ""
+	// Dead means the current Record is not processable.
+	Dead Status = "dead"
 )
+
+type attempt struct {
+	attempt     int
+	message     string
+	nextAttempt time.Time
+}
 
 // Record is event that should be processed by inbox worker.
 type Record struct {
@@ -28,6 +37,7 @@ type Record struct {
 	handlerKey string
 	status     Status
 	payload    []byte
+	attempt    attempt
 }
 
 // NewRecord creates new record that can be processed by inbox worker.
@@ -50,13 +60,23 @@ func NewRecord(id uuid.UUID, eventType string, payload []byte) (*Record, error) 
 	}, nil
 }
 
-func newFullRecord(id uuid.UUID, status Status, eventType, handlerKey string, payload []byte) *Record {
+func newFullRecord(
+	id uuid.UUID,
+	status Status,
+	eventType string,
+	handlerKey string,
+	payload []byte,
+	currAttempt int,
+) *Record {
 	return &Record{
 		id:         id,
 		status:     status,
 		eventType:  eventType,
 		handlerKey: handlerKey,
 		payload:    payload,
+		attempt: attempt{
+			attempt: currAttempt,
+		},
 	}
 }
 
@@ -68,13 +88,31 @@ func (r *Record) Done() {
 
 // Fail sets Failed status to current Record. Status will be
 // ignored on first save to the outbox table.
-func (r *Record) Fail() {
+func (r *Record) Fail(err error) {
 	r.status = Failed
+
+	r.attempt.message = err.Error()
+	r.attempt.attempt = r.attempt.attempt + 1
+}
+
+func (r *Record) Dead() {
+	r.status = Dead
 }
 
 // Null sets Null status to current Record.
 func (r *Record) Null() {
 	r.status = ""
+}
+
+func (r *Record) Attempt() int {
+	return r.attempt.attempt
+}
+
+func (r *Record) CalcNewDeadline(dur time.Duration) {
+	now := time.Now().UTC()
+	now = now.Add(dur)
+
+	r.attempt.nextAttempt = now
 }
 
 func (r *Record) withHandkerKey(key string) *Record {

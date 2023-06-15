@@ -1,6 +1,8 @@
 package inbox
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 type dtoRecord struct {
 	ID         string `db:"id"`
@@ -8,15 +10,17 @@ type dtoRecord struct {
 	EventType  string `db:"event_type"`
 	HandlerKey string `db:"handler_key"`
 	Payload    []byte `db:"payload"`
+	Attempt    int    `db:"attempt"`
 }
 
-func newDtoRecord(id, status, eventType, handlerKey string, payload []byte) *dtoRecord {
+func newDtoRecord(id, status, eventType, handlerKey string, payload []byte, attempt int) *dtoRecord {
 	return &dtoRecord{
 		ID:         id,
 		Status:     status,
 		EventType:  eventType,
 		HandlerKey: handlerKey,
 		Payload:    payload,
+		Attempt:    attempt,
 	}
 }
 
@@ -26,7 +30,7 @@ func makeRecord(dto *dtoRecord) (*Record, error) {
 		return nil, err
 	}
 
-	return newFullRecord(id, Status(dto.Status), dto.EventType, dto.HandlerKey, dto.Payload), nil
+	return newFullRecord(id, Status(dto.Status), dto.EventType, dto.HandlerKey, dto.Payload, dto.Attempt), nil
 }
 
 func makeRecords(dtos []*dtoRecord) ([]*Record, error) {

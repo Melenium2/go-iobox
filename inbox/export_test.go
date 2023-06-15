@@ -1,6 +1,10 @@
 package inbox
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Storage = defaultStorage
 
@@ -28,6 +32,15 @@ func ID2() uuid.UUID {
 
 func ID3() uuid.UUID {
 	return id3
+}
+
+func RecordWithAttempt(attempt int, status Status) *Record {
+	rec := Record1()
+
+	rec.attempt.attempt = attempt
+	rec.status = status
+
+	return rec
 }
 
 func Record1() *Record {
@@ -97,4 +110,16 @@ func NewEventMap(subjects map[string][]Handler) *EventMap {
 
 func (r *Record) WithHandlerKey(key string) *Record {
 	return r.withHandkerKey(key)
+}
+
+func (r *Record) Status() Status {
+	return r.status
+}
+
+func (r *Record) Deadline() time.Time {
+	return r.attempt.nextAttempt
+}
+
+func (i *Inbox) FailOrDead(record *Record, err error) *Record {
+	return i.failOrDead(record, err)
 }
