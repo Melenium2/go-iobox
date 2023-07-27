@@ -3,6 +3,7 @@ package inbox
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/Melenium2/go-iobox/backoff"
@@ -70,7 +71,12 @@ func (i *Inbox) run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			if err := i.iteration(); err != nil {
+			err := i.iteration()
+			if errors.Is(err, ErrNoRecords) {
+				continue
+			}
+
+			if err != nil {
 				i.logger.Print(err.Error())
 			}
 		case <-ctx.Done():
