@@ -5,11 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"sync"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
 type Client struct {
@@ -25,18 +27,7 @@ func (c *Client) Setup(ctx context.Context, db *sql.DB, path, migrTable string) 
 	var setupErr error
 
 	c.once.Do(func() {
-		conn, err := db.Conn(ctx)
-		if err != nil {
-			setupErr = err
-
-			return
-		}
-
-		cfg := &postgres.Config{
-			MigrationsTable: migrTable,
-		}
-
-		post, err := postgres.WithConnection(ctx, conn, cfg)
+		post, err := c.postgres(ctx, db, migrTable)
 		if err != nil {
 			setupErr = err
 
@@ -56,6 +47,55 @@ func (c *Client) Setup(ctx context.Context, db *sql.DB, path, migrTable string) 
 	})
 
 	return setupErr
+}
+
+func (c *Client) SetupFS(ctx context.Context, db *sql.DB, fs fs.FS, migrTable string) error {
+	var setupErr error
+
+	c.once.Do(func() {
+		post, err := c.postgres(ctx, db, migrTable)
+		if err != nil {
+			setupErr = err
+
+			return
+		}
+
+		input, err := iofs.New(fs, ".")
+		if err != nil {
+			setupErr = err
+
+			return
+		}
+
+		migr, err := migrate.NewWithInstance("iofs", input, "postgres", post)
+		if err != nil {
+			setupErr = err
+
+			return
+		}
+
+		c.migrator = migr
+	})
+
+	return setupErr
+}
+
+func (c *Client) postgres(ctx context.Context, db *sql.DB, table string) (*postgres.Postgres, error) {
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &postgres.Config{
+		MigrationsTable: table,
+	}
+
+	post, err := postgres.WithConnection(ctx, conn, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return post, nil
 }
 
 func (c *Client) Up() error {
