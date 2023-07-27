@@ -1,6 +1,7 @@
 package inbox
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -8,7 +9,7 @@ import (
 
 type Storage = defaultStorage
 
-func NewStorage(conn SQLConn) *Storage {
+func NewStorage(conn *sql.DB) *Storage {
 	return newStorage(conn)
 }
 
