@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"time"
 
+	// for importing migration files.
+	_ "github.com/Melenium2/go-iobox/inbox/migrations"
 	"github.com/Melenium2/go-iobox/migration"
 )
 
