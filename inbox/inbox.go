@@ -110,7 +110,8 @@ func (i *Inbox) iteration() error {
 		}
 
 		if err = i.process(ctx, handler, record.payload); err != nil {
-			record = i.failOrDead(record, err)
+			// function mutate record inside itself.
+			_ = i.failOrDead(record, err)
 
 			continue
 		}
