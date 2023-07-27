@@ -5,8 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	// for importing migration files.
-	_ "github.com/Melenium2/go-iobox/inbox/migrations"
+	"github.com/Melenium2/go-iobox/inbox/migrations"
 	"github.com/Melenium2/go-iobox/migration"
 )
 
@@ -23,7 +22,7 @@ func newStorage(conn *sql.DB) *defaultStorage {
 func (s *defaultStorage) InitInboxTable(ctx context.Context) error {
 	m := migration.New()
 
-	if err := m.Setup(ctx, s.conn, "inbox/migrations", "inbox_schema"); err != nil {
+	if err := m.SetupFS(ctx, s.conn, migrations.FS, "inbox_schema"); err != nil {
 		return err
 	}
 
