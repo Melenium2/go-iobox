@@ -31,6 +31,13 @@ const (
 
 var DefaultLogger = log.Default()
 
+type NopLogger struct{}
+
+func NewNopLogger() *NopLogger { return &NopLogger{} }
+
+func (l *NopLogger) Print(...any)          {}
+func (l *NopLogger) Printf(string, ...any) {}
+
 type config struct {
 	iterationRate    time.Duration
 	handlerTimeout   time.Duration
