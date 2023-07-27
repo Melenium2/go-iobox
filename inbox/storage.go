@@ -125,7 +125,7 @@ func (s *defaultStorage) Insert(ctx context.Context, record *Record) error {
 		ctx, sqlStr, record.id, record.eventType, record.handlerKey, record.payload,
 	)
 
-	return fmt.Errorf("error inserting new record, %w", err)
+	return err
 }
 
 func (s *defaultStorage) selectRows(
