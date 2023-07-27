@@ -3,6 +3,7 @@ package inbox
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/Melenium2/go-iobox/inbox/migrations"
@@ -23,7 +24,7 @@ func (s *defaultStorage) InitInboxTable(ctx context.Context) error {
 	m := migration.New()
 
 	if err := m.SetupFS(ctx, s.conn, migrations.FS, "inbox_schema"); err != nil {
-		return err
+		return fmt.Errorf("error while migrations, %w", err)
 	}
 
 	err := m.Up()
@@ -48,7 +49,7 @@ func (s *defaultStorage) Fetch(ctx context.Context, fetchTime time.Time) ([]*Rec
 		" 		returning id, status, event_type, handler_key, payload, attempt;"
 
 	if err := s.selectRows(ctx, s.conn, &dest, sqlStr, Progress, fetchTime); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while fetching records, %w", err)
 	}
 
 	if len(dest) == 0 {
@@ -73,7 +74,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 
 	stmt, err := s.conn.PrepareContext(ctx, sqlStr)
 	if err != nil {
-		return err
+		return fmt.Errorf("error while preparing stmt, %w", err)
 	}
 
 	defer stmt.Close()
@@ -109,7 +110,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 			curr.handlerKey,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("error while updating records, %w", err)
 		}
 	}
 
@@ -124,7 +125,7 @@ func (s *defaultStorage) Insert(ctx context.Context, record *Record) error {
 		ctx, sqlStr, record.id, record.eventType, record.handlerKey, record.payload,
 	)
 
-	return err
+	return fmt.Errorf("error inserting new record, %w", err)
 }
 
 func (s *defaultStorage) selectRows(
