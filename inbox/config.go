@@ -3,6 +3,8 @@ package inbox
 import (
 	"log"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -31,6 +33,8 @@ const (
 
 var DefaultLogger = log.Default()
 
+// NopLogger logs nothing. Use it if you want
+// mute Inbox.
 type NopLogger struct{}
 
 func NewNopLogger() *NopLogger { return &NopLogger{} }
@@ -38,12 +42,19 @@ func NewNopLogger() *NopLogger { return &NopLogger{} }
 func (l *NopLogger) Print(...any)          {}
 func (l *NopLogger) Printf(string, ...any) {}
 
+// ErrorCallback prototype of function that can be called on failed or
+// dead message.
+type ErrorCallback func(eventID uuid.UUID, msg string)
+
+func emptyCallback(uuid.UUID, string) {}
+
 type config struct {
 	iterationRate    time.Duration
 	handlerTimeout   time.Duration
 	maxRetryAttempts int
 	logger           Logger
 	debugMode        bool
+	onDeadCallback   ErrorCallback
 }
 
 func defaultConfig() config {
@@ -53,6 +64,7 @@ func defaultConfig() config {
 		maxRetryAttempts: DefaultRetryAttempts,
 		logger:           DefaultLogger,
 		debugMode:        DebugMode,
+		onDeadCallback:   emptyCallback,
 	}
 }
 
@@ -86,8 +98,8 @@ func WithLogger(logger Logger) Option {
 	}
 }
 
-// WithMaxRetryAttemot sets custom max attempts for processing event.
-func WithMaxRetryAttemot(maxAttempt int) Option {
+// WithMaxRetryAttempt sets custom max attempts for processing event.
+func WithMaxRetryAttempt(maxAttempt int) Option {
 	return func(c config) config {
 		c.maxRetryAttempts = maxAttempt
 
@@ -98,6 +110,17 @@ func WithMaxRetryAttemot(maxAttempt int) Option {
 func EnableDebugMode() Option {
 	return func(c config) config {
 		c.debugMode = true
+
+		return c
+	}
+}
+
+// OnDeadCallback sets custom callback for each message that can not
+// be processed and marks as 'dead'. Function fires if 'dead' message
+// detected.
+func OnDeadCallback(callback ErrorCallback) Option {
+	return func(c config) config {
+		c.onDeadCallback = callback
 
 		return c
 	}

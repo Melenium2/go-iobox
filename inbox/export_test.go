@@ -110,7 +110,7 @@ func NewEventMap(subjects map[string][]Handler) *EventMap {
 }
 
 func (r *Record) WithHandlerKey(key string) *Record {
-	return r.withHandkerKey(key)
+	return r.withHandlerKey(key)
 }
 
 func (r *Record) Status() Status {

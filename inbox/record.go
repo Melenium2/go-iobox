@@ -92,7 +92,7 @@ func (r *Record) Fail(err error) {
 	r.status = Failed
 
 	r.attempt.message = err.Error()
-	r.attempt.attempt = r.attempt.attempt + 1
+	r.attempt.attempt++
 }
 
 func (r *Record) Dead() {
@@ -115,7 +115,7 @@ func (r *Record) CalcNewDeadline(dur time.Duration) {
 	r.attempt.nextAttempt = now
 }
 
-func (r *Record) withHandkerKey(key string) *Record {
+func (r *Record) withHandlerKey(key string) *Record {
 	b := make([]byte, len(r.payload))
 	copy(b, r.payload)
 

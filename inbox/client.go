@@ -38,7 +38,7 @@ func (c *client) WriteInbox(ctx context.Context, record *Record) error {
 	records := make([]*Record, 0, len(keys))
 
 	for _, key := range keys {
-		records = append(records, record.withHandkerKey(key))
+		records = append(records, record.withHandlerKey(key))
 	}
 
 	for _, curr := range records {

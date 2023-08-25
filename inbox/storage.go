@@ -72,13 +72,6 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 		"			updated_at = (now() at time zone 'utc') " +
 		" 		where id = $5 and handler_key = $6;"
 
-	stmt, err := s.conn.PrepareContext(ctx, sqlStr)
-	if err != nil {
-		return fmt.Errorf("error while preparing stmt, %w", err)
-	}
-
-	defer stmt.Close()
-
 	for i := 0; i < len(records); i++ {
 		var (
 			recordStatus    sql.NullString
@@ -100,8 +93,9 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 			attemptDeadline = sql.NullTime{Time: curr.attempt.nextAttempt, Valid: true}
 		}
 
-		_, err = stmt.ExecContext(
+		_, err := s.conn.ExecContext(
 			ctx,
+			sqlStr,
 			recordStatus,
 			curr.attempt.attempt,
 			errorMessage,
@@ -136,6 +130,10 @@ func (s *defaultStorage) selectRows(
 		return err
 	}
 
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
 	defer rows.Close()
 
 	var (
@@ -146,6 +144,7 @@ func (s *defaultStorage) selectRows(
 		payload    []byte
 		attempt    int
 	)
+
 	for rows.Next() {
 		err = rows.Scan(&id, &status, &eventType, &handlerKey, &payload, &attempt)
 		if err != nil {
