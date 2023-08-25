@@ -29,6 +29,8 @@ type Inbox struct {
 	logger   Logger
 	config   config
 	backoff  *backoff.Backoff
+
+	onDead ErrorCallback
 }
 
 func NewInbox(registry *Registry, conn *sql.DB, opts ...Option) *Inbox {
@@ -44,6 +46,7 @@ func NewInbox(registry *Registry, conn *sql.DB, opts ...Option) *Inbox {
 		logger:   cfg.logger,
 		config:   cfg,
 		backoff:  backoff.NewBackoff(),
+		onDead:   cfg.onDeadCallback,
 	}
 }
 
@@ -71,7 +74,7 @@ func (i *Inbox) run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			err := i.iteration()
+			err := i.iteration() //nolint:contextcheck
 			if errors.Is(err, ErrNoRecords) {
 				continue
 			}
@@ -152,6 +155,8 @@ func (i *Inbox) failOrDead(record *Record, err error) *Record {
 
 	if attempt >= i.config.maxRetryAttempts {
 		record.Dead()
+
+		i.onDead(record.id, err.Error())
 
 		return record
 	}
