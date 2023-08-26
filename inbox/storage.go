@@ -24,7 +24,7 @@ func (s *defaultStorage) InitInboxTable(ctx context.Context) error {
 	m := migration.New()
 
 	if err := m.SetupFS(ctx, s.conn, migrations.FS, "inbox_schema"); err != nil {
-		return fmt.Errorf("error while migrations, %w", err)
+		return fmt.Errorf("failed to setup inbox migrations, %w", err)
 	}
 
 	err := m.Up()
@@ -34,7 +34,7 @@ func (s *defaultStorage) InitInboxTable(ctx context.Context) error {
 
 	_ = m.Down()
 
-	return err
+	return fmt.Errorf("failed to run migrations, %w", err)
 }
 
 func (s *defaultStorage) Fetch(ctx context.Context, fetchTime time.Time) ([]*Record, error) {
