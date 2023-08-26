@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -46,7 +47,7 @@ func Record3() *Record {
 	return newFullRecord(id3, Done, "topic1", &payload)
 }
 
-func NewStorage(conn SQLConn) *defaultStorage {
+func NewStorage(conn *sql.DB) *defaultStorage {
 	return newStorage(conn)
 }
 

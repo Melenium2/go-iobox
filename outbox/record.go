@@ -17,6 +17,8 @@ const (
 	Failed Status = "failed"
 	// Done means the current Record is successfully processed.
 	Done Status = "done"
+	// Null means the current Record is not processed yet.
+	Null Status = ""
 )
 
 // Record is event that should be processed by outbox worker.
@@ -43,7 +45,12 @@ func NewRecord(id uuid.UUID, eventType string, payload json.Marshaler) *Record {
 	}
 }
 
-func newFullRecord(id uuid.UUID, status Status, eventType string, payload json.Marshaler) *Record {
+func newFullRecord(
+	id uuid.UUID,
+	status Status,
+	eventType string,
+	payload json.Marshaler,
+) *Record {
 	return &Record{
 		id:        id,
 		status:    status,
@@ -62,4 +69,9 @@ func (r *Record) Done() {
 // ignored on first save to the outbox table.
 func (r *Record) Fail() {
 	r.status = Failed
+}
+
+// Null sets Null status to current Record.
+func (r *Record) Null() {
+	r.status = ""
 }

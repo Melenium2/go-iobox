@@ -11,11 +11,6 @@ type Broker interface {
 	Publish(ctx context.Context, subject string, payload []byte) error
 }
 
-type SQLConn interface {
-	ExecContext(ctx context.Context, sql string, args ...any) (sql.Result, error)
-	QueryContext(ctx context.Context, sql string, args ...any) (*sql.Rows, error)
-}
-
 type Logger interface {
 	Print(...any)
 	Printf(string, ...any)
@@ -39,7 +34,7 @@ type Outbox struct {
 }
 
 // NewOutbox creates new outbox implementation.
-func NewOutbox(broker Broker, conn SQLConn, opts ...Option) *Outbox {
+func NewOutbox(broker Broker, conn *sql.DB, opts ...Option) *Outbox {
 	defaultCfg := defaultConfig()
 
 	for _, opt := range opts {
@@ -99,7 +94,7 @@ func (o *Outbox) iteration(ctx context.Context) error {
 		}
 
 		if err := o.broker.Publish(ctx, record.eventType, payload); err != nil {
-			record.Fail()
+			record.Null()
 
 			return err
 		}
@@ -115,8 +110,11 @@ func (o *Outbox) iteration(ctx context.Context) error {
 }
 
 func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
-	success := make([]*Record, 0)
-	fail := make([]*Record, 0)
+	var (
+		success = make([]*Record, 0)
+		fail    = make([]*Record, 0)
+		null    = make([]*Record, 0)
+	)
 
 	for _, record := range records {
 		if record.status == Done {
@@ -126,13 +124,10 @@ func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
 		if record.status == Failed {
 			fail = append(fail, record)
 		}
-	}
 
-	if len(success)+len(fail) != len(records) {
-		o.logger.Printf(
-			"count of records does not match, len %d, success %d, fail %d",
-			len(records), len(success), len(fail),
-		)
+		if record.status == Null {
+			null = append(null, record)
+		}
 	}
 
 	if err := o.storage.Update(ctx, success); err != nil {
@@ -140,6 +135,10 @@ func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
 	}
 
 	if err := o.storage.Update(ctx, fail); err != nil {
+		return err
+	}
+
+	if err := o.storage.Update(ctx, null); err != nil {
 		return err
 	}
 
