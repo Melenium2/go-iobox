@@ -12,7 +12,7 @@ const (
 	// Default: 5 * time.Second.
 	DefaultIterationRate = 5 * time.Second
 	// TODO doc and option.
-	DefaultTimeout = 1 * time.Second
+	DefaultPublishTimeout = 1 * time.Second
 	// DebugMode enables additional logs for debug outbox process.
 	// Now, this option do nothing.
 	//
@@ -32,7 +32,7 @@ type config struct {
 func defaultConfig() config {
 	return config{
 		iterationRate: DefaultIterationRate,
-		timeout:       DefaultTimeout,
+		timeout:       DefaultPublishTimeout,
 		logger:        DefaultLogger,
 		debugMode:     DebugMode,
 	}

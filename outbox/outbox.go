@@ -72,7 +72,7 @@ func (o *Outbox) run() {
 	ticker := time.NewTicker(o.config.iterationRate)
 
 	for range ticker.C {
-		if err := o.iteration(); err != nil {
+		if err := o.iteration(context.Background()); err != nil {
 			o.logger.Print(err.Error())
 		}
 	}
@@ -80,10 +80,7 @@ func (o *Outbox) run() {
 
 // iteration tries to send events to the broker, if operation was successful
 // updates status in the outbox table.
-func (o *Outbox) iteration() error {
-	ctx, cancel := context.WithTimeout(context.Background(), o.config.timeout)
-	defer cancel()
-
+func (o *Outbox) iteration(ctx context.Context) error {
 	records, err := o.storage.Fetch(ctx)
 	if errors.Is(err, ErrNoRecrods) {
 		return nil
@@ -103,7 +100,7 @@ func (o *Outbox) iteration() error {
 			return err
 		}
 
-		if err := o.broker.Publish(ctx, record.eventType, payload); err != nil {
+		if err := o.publish(ctx, record.eventType, payload); err != nil {
 			// TODO doc.
 			record.Null()
 
@@ -118,6 +115,15 @@ func (o *Outbox) iteration() error {
 	}
 
 	return nil
+}
+
+func (o *Outbox) publish(ctx context.Context, eventType string, payload []byte) error {
+	ctx, cancel := context.WithTimeout(context.Background(), o.config.timeout)
+	defer cancel()
+
+	err := o.broker.Publish(ctx, eventType, payload)
+
+	return err
 }
 
 func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
