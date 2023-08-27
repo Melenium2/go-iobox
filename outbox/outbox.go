@@ -147,8 +147,6 @@ func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
 		}
 	}
 
-	o.logger.Printf("null = %d, success = %d, fail = %d", len(null), len(success), len(fail))
-
 	if err := o.storage.Update(ctx, success); err != nil {
 		return err
 	}
