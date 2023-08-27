@@ -3,6 +3,7 @@ package outbox
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -71,7 +72,7 @@ func (o *Outbox) run() {
 	ticker := time.NewTicker(o.config.iterationRate)
 
 	for range ticker.C {
-		if err := o.iteration(context.Background()); err != nil {
+		if err := o.iteration(); err != nil {
 			o.logger.Print(err.Error())
 		}
 	}
@@ -79,13 +80,22 @@ func (o *Outbox) run() {
 
 // iteration tries to send events to the broker, if operation was successful
 // updates status in the outbox table.
-func (o *Outbox) iteration(ctx context.Context) error {
+func (o *Outbox) iteration() error {
+	ctx, cancel := context.WithTimeout(context.Background(), o.config.timeout)
+	defer cancel()
+
 	records, err := o.storage.Fetch(ctx)
+	if errors.Is(err, ErrNoRecrods) {
+		return nil
+	}
+
 	if err != nil {
 		return err
 	}
 
 	for _, record := range records {
+		record.Done()
+
 		payload, err := record.payload.MarshalJSON()
 		if err != nil {
 			record.Fail()
@@ -94,12 +104,13 @@ func (o *Outbox) iteration(ctx context.Context) error {
 		}
 
 		if err := o.broker.Publish(ctx, record.eventType, payload); err != nil {
+			// TODO doc.
 			record.Null()
 
-			return err
+			o.logger.Print(err.Error())
 		}
 
-		record.Done()
+		o.logger.Print("new record iteration")
 	}
 
 	if err := o.updateStatus(ctx, records); err != nil {
@@ -129,6 +140,8 @@ func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
 			null = append(null, record)
 		}
 	}
+
+	o.logger.Printf("null = %d, success = %d, fail = %d", len(null), len(success), len(fail))
 
 	if err := o.storage.Update(ctx, success); err != nil {
 		return err
