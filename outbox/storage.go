@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
+
+	"github.com/lib/pq"
 
 	"github.com/Melenium2/go-iobox/migration"
 	"github.com/Melenium2/go-iobox/outbox/migrations"
@@ -67,7 +68,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 		sqlStr = "update __outbox_table set " +
 			" 			status = $1, " +
 			"			updated_at = (now() at time zone 'utc') " +
-			" 		where id in ($2);"
+			" 		where id = any ($2);"
 
 		recordsStatus sql.NullString
 	)
@@ -82,7 +83,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 		ids[i] = records[i].id.String()
 	}
 
-	_, err := s.conn.ExecContext(ctx, sqlStr, recordsStatus, strings.Join(ids, ", "))
+	_, err := s.conn.ExecContext(ctx, sqlStr, recordsStatus, pq.Array(ids))
 
 	return err
 }
