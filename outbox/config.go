@@ -11,6 +11,12 @@ const (
 	//
 	// Default: 5 * time.Second.
 	DefaultIterationRate = 5 * time.Second
+	// DefaultPublishTimeout is the timeout after which the publication
+	// of the current event is canceled. The current event marked as 'not yet published', and
+	// processing continues.
+	//
+	// Default: 2 * time.Second.
+	DefaultPublishTimeout = 2 * time.Second
 	// DebugMode enables additional logs for debug outbox process.
 	// Now, this option do nothing.
 	//
@@ -22,6 +28,7 @@ var DefaultLogger = log.Default()
 
 type config struct {
 	iterationRate time.Duration
+	timeout       time.Duration
 	logger        Logger
 	debugMode     bool
 }
@@ -29,6 +36,7 @@ type config struct {
 func defaultConfig() config {
 	return config{
 		iterationRate: DefaultIterationRate,
+		timeout:       DefaultPublishTimeout,
 		logger:        DefaultLogger,
 		debugMode:     DebugMode,
 	}
@@ -51,6 +59,15 @@ func WithIterationRate(dur time.Duration) Option {
 func WithLogger(logger Logger) Option {
 	return func(c config) config {
 		c.logger = logger
+
+		return c
+	}
+}
+
+// WithPublishTimeout sets a custom timeout for publishing next event.
+func WithPublishTimeout(dur time.Duration) Option {
+	return func(c config) config {
+		c.timeout = dur
 
 		return c
 	}

@@ -3,33 +3,40 @@ package outbox
 import (
 	"context"
 	"database/sql"
-	"strings"
+	"fmt"
+	"time"
+
+	"github.com/lib/pq"
+
+	"github.com/Melenium2/go-iobox/migration"
+	"github.com/Melenium2/go-iobox/outbox/migrations"
 )
 
 type defaultStorage struct {
-	conn SQLConn
+	conn *sql.DB
 }
 
-func newStorage(conn SQLConn) *defaultStorage {
+func newStorage(conn *sql.DB) *defaultStorage {
 	return &defaultStorage{
 		conn: conn,
 	}
 }
 
 func (s *defaultStorage) InitOutboxTable(ctx context.Context) error {
-	sql := "create table if not exists __outbox_table " +
-		" 	(" +
-		" 		id varchar(36) not null primary key," +
-		" 		status varchar(12)," +
-		" 		event_type varchar(255) not null," +
-		" 		payload jsonb not null," +
-		" 		created_at timestamp not null default (now() at time zone 'utc')," +
-		" 		updated_at timestamp not null default (now() at time zone 'utc')" +
-		" 	);"
+	m := migration.New()
 
-	_, err := s.conn.ExecContext(ctx, sql)
+	if err := m.SetupFS(ctx, s.conn, migrations.FS, "outbox_schema"); err != nil {
+		return fmt.Errorf("failed to setup outbox migrations, %w", err)
+	}
 
-	return err
+	err := m.Up()
+	if err == nil {
+		return nil
+	}
+
+	_ = m.Down()
+
+	return fmt.Errorf("failed to run migrations, %w", err)
 }
 
 func (s *defaultStorage) Fetch(ctx context.Context) ([]*Record, error) {
@@ -39,7 +46,7 @@ func (s *defaultStorage) Fetch(ctx context.Context) ([]*Record, error) {
 		" 				status = $1," +
 		" 				updated_at = (now() at time zone 'utc') " +
 		" 		where status is null " +
-		" 		returning id, status, event_type, payload;"
+		" 		returning id, status, event_type, payload, created_at;"
 
 	if err := s.selectRows(ctx, s.conn, &dest, sqlStr, Progress); err != nil {
 		return nil, err
@@ -61,7 +68,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 		sqlStr = "update __outbox_table set " +
 			" 			status = $1, " +
 			"			updated_at = (now() at time zone 'utc') " +
-			" 		where id in ($2);"
+			" 		where id = any ($2);"
 
 		recordsStatus sql.NullString
 	)
@@ -76,12 +83,12 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 		ids[i] = records[i].id.String()
 	}
 
-	_, err := s.conn.ExecContext(ctx, sqlStr, recordsStatus, strings.Join(ids, ", "))
+	_, err := s.conn.ExecContext(ctx, sqlStr, recordsStatus, pq.Array(ids))
 
 	return err
 }
 
-func (s *defaultStorage) Insert(ctx context.Context, tx SQLConn, record *Record) error {
+func (s *defaultStorage) Insert(ctx context.Context, tx Execer, record *Record) error {
 	sqlStr := "insert into __outbox_table (id, event_type, payload) values ($1, $2, $3) " +
 		" on conflict do nothing;"
 
@@ -95,7 +102,7 @@ func (s *defaultStorage) Insert(ctx context.Context, tx SQLConn, record *Record)
 	return err
 }
 
-func (s *defaultStorage) selectRows(ctx context.Context, conn SQLConn, dest *[]*dtoRecord, sqlStr string, args ...any) error {
+func (s *defaultStorage) selectRows(ctx context.Context, conn *sql.DB, dest *[]*dtoRecord, sqlStr string, args ...any) error {
 	rows, err := conn.QueryContext(ctx, sqlStr, args...)
 	if err != nil {
 		return err
@@ -108,14 +115,15 @@ func (s *defaultStorage) selectRows(ctx context.Context, conn SQLConn, dest *[]*
 		status    sql.NullString
 		eventType string
 		payload   []byte
+		createdAt time.Time
 	)
 	for rows.Next() {
-		err = rows.Scan(&id, &status, &eventType, &payload)
+		err = rows.Scan(&id, &status, &eventType, &payload, &createdAt)
 		if err != nil {
 			return err
 		}
 
-		*dest = append(*dest, newDtoRecord(id, status.String, eventType, payload))
+		*dest = append(*dest, newDtoRecord(id, status.String, eventType, payload, createdAt))
 	}
 
 	return nil

@@ -1,6 +1,6 @@
 .PHONY: test
 test:
-	go test -race -cover -bench=. ./...
+	go test -fullpath -race -cover -bench=. ./...
 
 lint-local:
 	golangci-lint run

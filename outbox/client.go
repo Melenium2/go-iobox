@@ -2,12 +2,17 @@ package outbox
 
 import (
 	"context"
+	"database/sql"
 )
+
+type Execer interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
 
 // Client provides possibility to set outbox record to the outbox table.
 // Insertion must be in the same transaction as the produced action.
 type Client interface {
-	WriteOutbox(context.Context, SQLConn, *Record) error
+	WriteOutbox(context.Context, Execer, *Record) error
 }
 
 type client struct {
@@ -20,6 +25,6 @@ func newClient(storage *defaultStorage) *client {
 	}
 }
 
-func (c *client) WriteOutbox(ctx context.Context, tx SQLConn, record *Record) error {
+func (c *client) WriteOutbox(ctx context.Context, tx Execer, record *Record) error {
 	return c.storage.Insert(ctx, tx, record)
 }

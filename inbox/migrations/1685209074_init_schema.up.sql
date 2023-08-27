@@ -10,4 +10,3 @@ create table if not exists __inbox_table
 );
 
 create unique index if not exists __inbox_uniq_id_handler_key_idx on __inbox_table (id, handler_key);
-

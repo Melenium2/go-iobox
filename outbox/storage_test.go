@@ -116,6 +116,31 @@ func (suite *StorageSuite) TestUpdate_Should_update_provided_records_with_new_st
 	}
 }
 
+func (suite *StorageSuite) TestUpdate_Should_set_null_status_to_record() {
+	initInProgressRows(suite.db)
+
+	ctx := context.Background()
+
+	record1 := outbox.Record1()
+	record1.Null()
+
+	record2 := outbox.Record2()
+	record2.Null()
+
+	err := suite.storage.Update(ctx, []*outbox.Record{record1, record2})
+	suite.Require().NoError(err)
+
+	{
+		var (
+			sqlStr   = "select count(*) from __outbox_table where id in ($1, $2) and status is not null;"
+			expected = 0
+			dest     int
+		)
+		_ = suite.db.QueryRow(sqlStr, outbox.ID1(), outbox.ID2()).Scan(&dest)
+		suite.Assert().Equal(expected, dest)
+	}
+}
+
 func (suite *StorageSuite) TestInsert_Should_insert_new_records_to_table() {
 	initInProgressRows(suite.db)
 

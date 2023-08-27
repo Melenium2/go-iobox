@@ -3,17 +3,13 @@ package outbox
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 )
 
 type Broker interface {
 	Publish(ctx context.Context, subject string, payload []byte) error
-}
-
-type SQLConn interface {
-	ExecContext(ctx context.Context, sql string, args ...any) (sql.Result, error)
-	QueryContext(ctx context.Context, sql string, args ...any) (*sql.Rows, error)
 }
 
 type Logger interface {
@@ -39,7 +35,7 @@ type Outbox struct {
 }
 
 // NewOutbox creates new outbox implementation.
-func NewOutbox(broker Broker, conn SQLConn, opts ...Option) *Outbox {
+func NewOutbox(broker Broker, conn *sql.DB, opts ...Option) *Outbox {
 	defaultCfg := defaultConfig()
 
 	for _, opt := range opts {
@@ -86,11 +82,17 @@ func (o *Outbox) run() {
 // updates status in the outbox table.
 func (o *Outbox) iteration(ctx context.Context) error {
 	records, err := o.storage.Fetch(ctx)
+	if errors.Is(err, ErrNoRecrods) {
+		return nil
+	}
+
 	if err != nil {
 		return err
 	}
 
 	for _, record := range records {
+		record.Done()
+
 		payload, err := record.payload.MarshalJSON()
 		if err != nil {
 			record.Fail()
@@ -98,13 +100,14 @@ func (o *Outbox) iteration(ctx context.Context) error {
 			return err
 		}
 
-		if err := o.broker.Publish(ctx, record.eventType, payload); err != nil {
-			record.Fail()
+		if err := o.publish(ctx, record.eventType, payload); err != nil {
+			// If we can not publish the event during a connection issue
+			// or whatever, we set the current record status to Null.
+			// This means that the current record has not yet been published.
+			record.Null()
 
-			return err
+			o.logger.Print(err.Error())
 		}
-
-		record.Done()
 	}
 
 	if err := o.updateStatus(ctx, records); err != nil {
@@ -114,9 +117,21 @@ func (o *Outbox) iteration(ctx context.Context) error {
 	return nil
 }
 
+func (o *Outbox) publish(ctx context.Context, eventType string, payload []byte) error {
+	ctx, cancel := context.WithTimeout(ctx, o.config.timeout)
+	defer cancel()
+
+	err := o.broker.Publish(ctx, eventType, payload)
+
+	return err
+}
+
 func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
-	success := make([]*Record, 0)
-	fail := make([]*Record, 0)
+	var (
+		success = make([]*Record, 0)
+		fail    = make([]*Record, 0)
+		null    = make([]*Record, 0)
+	)
 
 	for _, record := range records {
 		if record.status == Done {
@@ -126,13 +141,10 @@ func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
 		if record.status == Failed {
 			fail = append(fail, record)
 		}
-	}
 
-	if len(success)+len(fail) != len(records) {
-		o.logger.Printf(
-			"count of records does not match, len %d, success %d, fail %d",
-			len(records), len(success), len(fail),
-		)
+		if record.status == Null {
+			null = append(null, record)
+		}
 	}
 
 	if err := o.storage.Update(ctx, success); err != nil {
@@ -140,6 +152,10 @@ func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
 	}
 
 	if err := o.storage.Update(ctx, fail); err != nil {
+		return err
+	}
+
+	if err := o.storage.Update(ctx, null); err != nil {
 		return err
 	}
 
