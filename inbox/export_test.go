@@ -124,3 +124,9 @@ func (r *Record) Deadline() time.Time {
 func (i *Inbox) FailOrDead(record *Record, err error) *Record {
 	return i.failOrDead(record, err)
 }
+
+type DTORecord = dtoRecord
+
+func MakeRecords(dtos []*DTORecord) ([]*Record, error) {
+	return makeRecords(dtos)
+}
