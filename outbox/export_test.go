@@ -54,3 +54,9 @@ func NewStorage(conn *sql.DB) *defaultStorage {
 func (o *Outbox) Iteration() error {
 	return o.iteration(context.Background())
 }
+
+type DTORecord = dtoRecord
+
+func MakeRecrods(dtos []*DTORecord) ([]*Record, error) {
+	return makeRecords(dtos)
+}
