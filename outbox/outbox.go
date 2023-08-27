@@ -101,13 +101,13 @@ func (o *Outbox) iteration(ctx context.Context) error {
 		}
 
 		if err := o.publish(ctx, record.eventType, payload); err != nil {
-			// TODO doc.
+			// If we can not publish the event during a connection issue
+			// or whatever, we set the current record status to Null.
+			// This means that the current record has not yet been published.
 			record.Null()
 
 			o.logger.Print(err.Error())
 		}
-
-		o.logger.Print("new record iteration")
 	}
 
 	if err := o.updateStatus(ctx, records); err != nil {

@@ -11,8 +11,12 @@ const (
 	//
 	// Default: 5 * time.Second.
 	DefaultIterationRate = 5 * time.Second
-	// TODO doc and option.
-	DefaultPublishTimeout = 1 * time.Second
+	// DefaultPublishTimeout is the timeout after which the publication
+	// of the current event is canceled. The current event marked as 'not yet published', and
+	// processing continues.
+	//
+	// Default: 2 * time.Second.
+	DefaultPublishTimeout = 2 * time.Second
 	// DebugMode enables additional logs for debug outbox process.
 	// Now, this option do nothing.
 	//
@@ -55,6 +59,15 @@ func WithIterationRate(dur time.Duration) Option {
 func WithLogger(logger Logger) Option {
 	return func(c config) config {
 		c.logger = logger
+
+		return c
+	}
+}
+
+// WithPublishTimeout sets a custom timeout for publishing next event.
+func WithPublishTimeout(dur time.Duration) Option {
+	return func(c config) config {
+		c.timeout = dur
 
 		return c
 	}
