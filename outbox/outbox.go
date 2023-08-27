@@ -118,7 +118,7 @@ func (o *Outbox) iteration(ctx context.Context) error {
 }
 
 func (o *Outbox) publish(ctx context.Context, eventType string, payload []byte) error {
-	ctx, cancel := context.WithTimeout(context.Background(), o.config.timeout)
+	ctx, cancel := context.WithTimeout(ctx, o.config.timeout)
 	defer cancel()
 
 	err := o.broker.Publish(ctx, eventType, payload)
