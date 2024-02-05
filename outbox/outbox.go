@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/Melenium2/go-iobox/metrics"
 )
 
 type Broker interface {
@@ -27,11 +29,11 @@ type Logger interface {
 // More about outbox pattern you can read at
 // https://microservices.io/patterns/data/transactional-outbox.html.
 type Outbox struct {
-	broker Broker
-	logger Logger
+	broker  Broker
+	logger  Logger
+	storage *storage
 
-	storage *defaultStorage
-	config  config
+	config config
 }
 
 // NewOutbox creates new outbox implementation.
@@ -42,10 +44,18 @@ func NewOutbox(broker Broker, conn *sql.DB, opts ...Option) *Outbox {
 		defaultCfg = opt(defaultCfg)
 	}
 
+	migr := newMigrator(conn)
+
+	var storageConn QueryExecer = conn
+
+	if defaultCfg.metricsMode {
+		storageConn = metrics.NewMetricsStorage(storageConn)
+	}
+
 	return &Outbox{
 		broker:  broker,
 		logger:  defaultCfg.logger,
-		storage: newStorage(conn),
+		storage: newStorage(migr, storageConn),
 		config:  defaultCfg,
 	}
 }
@@ -58,7 +68,7 @@ func (o *Outbox) Writer() Client {
 // Start initialize outbox table and start worker process. Worker
 // is process that send outgoing messages to broker.
 func (o *Outbox) Start(ctx context.Context) error {
-	if err := o.storage.InitOutboxTable(ctx); err != nil {
+	if err := o.storage.InitTable(ctx); err != nil {
 		return fmt.Errorf("can not initialize outbox table, storage return err: %w", err)
 	}
 
