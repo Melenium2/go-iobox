@@ -21,7 +21,8 @@ const (
 	// Now, this option do nothing.
 	//
 	// Default: false.
-	DebugMode = false
+	DebugMode         = false
+	DefaulMetricsMode = false
 )
 
 var DefaultLogger = log.Default()
@@ -31,6 +32,7 @@ type config struct {
 	timeout       time.Duration
 	logger        Logger
 	debugMode     bool
+	metricsMode   bool
 }
 
 func defaultConfig() config {
@@ -39,6 +41,7 @@ func defaultConfig() config {
 		timeout:       DefaultPublishTimeout,
 		logger:        DefaultLogger,
 		debugMode:     DebugMode,
+		metricsMode:   DefaulMetricsMode,
 	}
 }
 
@@ -76,6 +79,14 @@ func WithPublishTimeout(dur time.Duration) Option {
 func EnableDebugMode() Option {
 	return func(c config) config {
 		c.debugMode = true
+
+		return c
+	}
+}
+
+func EnableMetrics() Option {
+	return func(c config) config {
+		c.metricsMode = true
 
 		return c
 	}

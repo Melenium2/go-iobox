@@ -16,10 +16,10 @@ type Client interface {
 }
 
 type client struct {
-	storage *defaultStorage
+	storage *storage
 }
 
-func newClient(storage *defaultStorage) *client {
+func newClient(storage *storage) *client {
 	return &client{
 		storage: storage,
 	}

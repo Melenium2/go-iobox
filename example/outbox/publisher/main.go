@@ -45,7 +45,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ob := outbox.NewOutbox(broker, db)
+	ob := outbox.NewOutbox(broker, db, outbox.EnableDebugMode(), outbox.EnableMetrics())
 
 	if err = ob.Start(context.Background()); err != nil {
 		log.Fatal(err)
