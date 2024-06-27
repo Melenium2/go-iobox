@@ -46,7 +46,7 @@ func (s *defaultStorage) Fetch(ctx context.Context, fetchTime time.Time) ([]*Rec
 		" 		where " +
 		" 			status is null or " +
 		" 			(status = 'failed' and next_attempt <= $2) " +
-		" 		returning id, status, event_type, handler_key, payload, attempt;"
+		" 		returning id, status, event_type, handler_key, payload, attempt, created_at;"
 
 	if err := s.selectRows(ctx, s.conn, &dest, sqlStr, Progress, fetchTime); err != nil {
 		return nil, fmt.Errorf("error while fetching records, %w", err)
@@ -143,15 +143,18 @@ func (s *defaultStorage) selectRows(
 		handlerKey string
 		payload    []byte
 		attempt    int
+		createdAt  time.Time
 	)
 
 	for rows.Next() {
-		err = rows.Scan(&id, &status, &eventType, &handlerKey, &payload, &attempt)
+		err = rows.Scan(&id, &status, &eventType, &handlerKey, &payload, &attempt, &createdAt)
 		if err != nil {
 			return err
 		}
 
-		*dest = append(*dest, newDtoRecord(id, status.String, eventType, handlerKey, payload, attempt))
+		dto := newDtoRecord(id, status.String, eventType, handlerKey, payload, attempt, createdAt)
+
+		*dest = append(*dest, dto)
 	}
 
 	return nil

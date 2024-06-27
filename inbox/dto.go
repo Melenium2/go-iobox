@@ -17,7 +17,9 @@ type dtoRecord struct {
 	CreatedAt  time.Time `db:"created_at"`
 }
 
-func newDtoRecord(id, status, eventType, handlerKey string, payload []byte, attempt int) *dtoRecord {
+func newDtoRecord(
+	id, status, eventType, handlerKey string, payload []byte, attempt int, createdAt time.Time,
+) *dtoRecord {
 	return &dtoRecord{
 		ID:         id,
 		Status:     status,
@@ -25,6 +27,7 @@ func newDtoRecord(id, status, eventType, handlerKey string, payload []byte, atte
 		HandlerKey: handlerKey,
 		Payload:    payload,
 		Attempt:    attempt,
+		CreatedAt:  createdAt,
 	}
 }
 
