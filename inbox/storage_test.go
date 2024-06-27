@@ -61,8 +61,8 @@ func (suite *StorageSuite) TestFetch_Should_fetch_unprocessed_rows_and_set_new_s
 	ctx := context.Background()
 
 	expected := []*inbox.Record{
-		inbox.Record1(),
 		inbox.Record2(),
+		inbox.Record1(),
 	}
 
 	result, err := suite.storage.Fetch(ctx, time.Time{})
@@ -182,13 +182,13 @@ func truncateTable(db *sql.DB) {
 
 func initNotProcessedRows(db *sql.DB) {
 	_, _ = db.Exec(
-		"insert into __inbox_table (id, event_type, handler_key, payload) values ($1, $2, $3, $4)",
-		inbox.ID1(), "1", "1", "{}",
+		"insert into __inbox_table (id, event_type, handler_key, payload, created_at) values ($1, $2, $3, $4, $5)",
+		inbox.ID1(), "1", "1", "{}", "2024-06-05 17:55:02.785357",
 	)
 
 	_, _ = db.Exec(
-		"insert into __inbox_table (id, event_type, handler_key, payload) values ($1, $2, $3, $4)",
-		inbox.ID2(), "1", "2", "{}",
+		"insert into __inbox_table (id, event_type, handler_key, payload, created_at) values ($1, $2, $3, $4, $5)",
+		inbox.ID2(), "1", "2", "{}", "2024-06-05 17:55:01.785357",
 	)
 
 	_, _ = db.Exec(
