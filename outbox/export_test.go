@@ -9,7 +9,7 @@ import (
 
 type PayloadMarshaler = dtoPayload
 
-type Storage = defaultStorage
+type Storage = storage
 
 var (
 	id1 = uuid.New()
@@ -47,8 +47,8 @@ func Record3() *Record {
 	return newFullRecord(id3, Done, "topic1", &payload)
 }
 
-func NewStorage(conn *sql.DB) *defaultStorage {
-	return newStorage(conn)
+func NewStorage(conn *sql.DB) *storage {
+	return newStorage(newMigrator(conn), conn)
 }
 
 func (o *Outbox) Iteration() error {

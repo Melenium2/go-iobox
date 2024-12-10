@@ -36,12 +36,13 @@ func (suite *StorageSuite) SetupSuite() {
 	suite.Require().NoError(err)
 
 	err = db.Ping()
+	// TODO skip suite if connection not established.
 	suite.Require().NoError(err)
 
 	suite.db = db
 	suite.storage = outbox.NewStorage(db)
 
-	err = suite.storage.InitOutboxTable(context.Background())
+	err = suite.storage.InitTable(context.Background())
 	suite.Require().NoError(err)
 }
 

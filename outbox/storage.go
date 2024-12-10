@@ -3,43 +3,30 @@ package outbox
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/lib/pq"
-
-	"github.com/Melenium2/go-iobox/migration"
-	"github.com/Melenium2/go-iobox/outbox/migrations"
 )
 
-type defaultStorage struct {
-	conn *sql.DB
+type QueryExecer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-func newStorage(conn *sql.DB) *defaultStorage {
-	return &defaultStorage{
-		conn: conn,
+type storage struct {
+	*migrator
+
+	conn QueryExecer
+}
+
+func newStorage(migrator *migrator, conn QueryExecer) *storage {
+	return &storage{
+		conn:     conn,
+		migrator: migrator,
 	}
 }
 
-func (s *defaultStorage) InitOutboxTable(ctx context.Context) error {
-	m := migration.New()
-
-	if err := m.SetupFS(ctx, s.conn, migrations.FS, "outbox_schema"); err != nil {
-		return fmt.Errorf("failed to setup outbox migrations, %w", err)
-	}
-
-	err := m.Up()
-	if err == nil {
-		return nil
-	}
-
-	_ = m.Down()
-
-	return fmt.Errorf("failed to run migrations, %w", err)
-}
-
-func (s *defaultStorage) Fetch(ctx context.Context) ([]*Record, error) {
+func (s *storage) Fetch(ctx context.Context) ([]*Record, error) {
 	dest := make([]*dtoRecord, 0)
 
 	sqlStr := "update __outbox_table set " +
@@ -59,7 +46,7 @@ func (s *defaultStorage) Fetch(ctx context.Context) ([]*Record, error) {
 	return makeRecords(dest)
 }
 
-func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
+func (s *storage) Update(ctx context.Context, records []*Record) error {
 	if len(records) == 0 {
 		return nil
 	}
@@ -88,7 +75,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 	return err
 }
 
-func (s *defaultStorage) Insert(ctx context.Context, tx Execer, record *Record) error {
+func (s *storage) Insert(ctx context.Context, tx Execer, record *Record) error {
 	sqlStr := "insert into __outbox_table (id, event_type, payload) values ($1, $2, $3) " +
 		" on conflict do nothing;"
 
@@ -102,7 +89,7 @@ func (s *defaultStorage) Insert(ctx context.Context, tx Execer, record *Record) 
 	return err
 }
 
-func (s *defaultStorage) selectRows(ctx context.Context, conn *sql.DB, dest *[]*dtoRecord, sqlStr string, args ...any) error {
+func (s *storage) selectRows(ctx context.Context, conn QueryExecer, dest *[]*dtoRecord, sqlStr string, args ...any) error {
 	rows, err := conn.QueryContext(ctx, sqlStr, args...)
 	if err != nil {
 		return err
