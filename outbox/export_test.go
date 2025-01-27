@@ -12,20 +12,20 @@ type PayloadMarshaler = dtoPayload
 type Storage = defaultStorage
 
 var (
-	id1 = uuid.New()
-	id2 = uuid.New()
-	id3 = uuid.New()
+	id1 = uuid.NewString()
+	id2 = uuid.NewString()
+	id3 = uuid.NewString()
 )
 
-func ID1() uuid.UUID {
+func ID1() string {
 	return id1
 }
 
-func ID2() uuid.UUID {
+func ID2() string {
 	return id2
 }
 
-func ID3() uuid.UUID {
+func ID3() string {
 	return id3
 }
 

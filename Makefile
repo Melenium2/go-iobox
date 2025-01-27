@@ -6,7 +6,7 @@ lint-local:
 	golangci-lint run
 
 infra-start:
-	docker compose -p outbox up -d
+	cd example && docker compose -p outbox up -d
 
 infra-stop:
-	docker compose -p outbox stop
+	cd example && docker compose -p outbox stop

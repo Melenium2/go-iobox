@@ -126,7 +126,7 @@ func (p *InifinityPublishCycle) Start() {
 
 		b := body{A: 1, B: float64(24)}
 
-		rec := outbox.NewRecord(uuid.New(), "outbox", &b)
+		rec := outbox.NewRecord(uuid.NewString(), "outbox", &b)
 
 		err := p.client.WriteOutbox(ctx, p.db, rec)
 		if err != nil {
