@@ -80,7 +80,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 	ids := make([]string, len(records))
 
 	for i := 0; i < len(records); i++ {
-		ids[i] = records[i].id.String()
+		ids[i] = records[i].id
 	}
 
 	_, err := s.conn.ExecContext(ctx, sqlStr, recordsStatus, pq.Array(ids))

@@ -3,8 +3,6 @@ package outbox
 import (
 	"sort"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type dtoRecord struct {
@@ -34,14 +32,9 @@ func (dp *dtoPayload) MarshalJSON() ([]byte, error) {
 }
 
 func makeRecord(dto *dtoRecord) (*Record, error) {
-	id, err := uuid.Parse(dto.ID)
-	if err != nil {
-		return nil, err
-	}
-
 	payload := dtoPayload{Body: dto.Payload}
 
-	return newFullRecord(id, Status(dto.Status), dto.EventType, &payload), nil
+	return newFullRecord(dto.ID, Status(dto.Status), dto.EventType, &payload), nil
 }
 
 func makeRecords(dtos []*dtoRecord) ([]*Record, error) {

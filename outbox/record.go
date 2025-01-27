@@ -2,8 +2,6 @@ package outbox
 
 import (
 	"encoding/json"
-
-	"github.com/google/uuid"
 )
 
 // Status defines current status of Record.
@@ -23,7 +21,7 @@ const (
 
 // Record is event that should be processed by outbox worker.
 type Record struct {
-	id        uuid.UUID
+	id        string
 	eventType string
 	status    Status
 	payload   json.Marshaler
@@ -34,10 +32,10 @@ type Record struct {
 // Parameters:
 //
 //	id - is a unique id for outbox table. ID should be unique or storage
-//			will ignore all duplicate ids.
+//			will ignore all duplicate ids. ID can container max 36 byte.
 //	eventType - is a topic to which event will be published.
 //	payload - the body to be published.
-func NewRecord(id uuid.UUID, eventType string, payload json.Marshaler) *Record {
+func NewRecord(id string, eventType string, payload json.Marshaler) *Record {
 	return &Record{
 		id:        id,
 		eventType: eventType,
@@ -46,7 +44,7 @@ func NewRecord(id uuid.UUID, eventType string, payload json.Marshaler) *Record {
 }
 
 func newFullRecord(
-	id uuid.UUID,
+	id string,
 	status Status,
 	eventType string,
 	payload json.Marshaler,

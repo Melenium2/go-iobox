@@ -13,21 +13,21 @@ import (
 func TestMakeRecords_Should_sorts_dtos_by_created_at_in_asc_order(t *testing.T) {
 	dtos := []*outbox.DTORecord{
 		{
-			ID:        outbox.ID2().String(),
+			ID:        outbox.ID2(),
 			Status:    "progress",
 			EventType: "topic1",
 			Payload:   []byte("{}"),
 			CreatedAt: time.Date(2000, 1, 1, 1, 15, 0, 0, time.UTC),
 		},
 		{
-			ID:        outbox.ID1().String(),
+			ID:        outbox.ID1(),
 			Status:    "progress",
 			EventType: "topic1",
 			Payload:   []byte("{}"),
 			CreatedAt: time.Date(2000, 1, 1, 1, 13, 0, 0, time.UTC),
 		},
 		{
-			ID:        outbox.ID3().String(),
+			ID:        outbox.ID3(),
 			Status:    "done",
 			EventType: "topic1",
 			Payload:   []byte("{}"),
