@@ -69,7 +69,15 @@ func (i *Inbox) Start(ctx context.Context) error {
 }
 
 func (i *Inbox) run(ctx context.Context) {
-	ticker := time.NewTicker(i.config.iterationRate)
+	var (
+		backoffConfig = backoff.Config{
+			Min: time.Second,
+			Max: i.config.iterationRate,
+		}
+		bf = backoff.NewBackoff(backoffConfig)
+	)
+
+	ticker := backoff.NewTicker(bf, i.config.iterationRate, i.config.iterationSeed)
 
 	for {
 		select {
