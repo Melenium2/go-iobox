@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Melenium2/go-iobox/backoff"
+	"github.com/Melenium2/go-iobox/retention"
 )
 
 type Broker interface {
@@ -32,8 +33,9 @@ type Outbox struct {
 	broker Broker
 	logger Logger
 
-	storage *defaultStorage
-	config  config
+	storage   *defaultStorage
+	retention *retention.Policy
+	config    config
 }
 
 // NewOutbox creates new outbox implementation.
@@ -44,11 +46,17 @@ func NewOutbox(broker Broker, conn *sql.DB, opts ...Option) *Outbox {
 		defaultCfg = opt(defaultCfg)
 	}
 
+	retentionConfig := retention.Config{
+		RetentionWindow: 60,
+		EraseInterval:   24 * time.Hour,
+	}
+
 	return &Outbox{
-		broker:  broker,
-		logger:  defaultCfg.logger,
-		storage: newStorage(conn),
-		config:  defaultCfg,
+		broker:    broker,
+		logger:    defaultCfg.logger,
+		storage:   newStorage(conn),
+		retention: retention.NewPolicy(conn, "table_name", retentionConfig),
+		config:    defaultCfg,
 	}
 }
 
@@ -65,6 +73,7 @@ func (o *Outbox) Start(ctx context.Context) error {
 	}
 
 	go o.run(ctx)
+	go o.retention.Start(ctx)
 
 	return nil
 }
