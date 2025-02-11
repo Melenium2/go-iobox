@@ -58,6 +58,7 @@ type Ticker struct {
 //	}
 func NewTicker(backoff *Backoff, minDuration time.Duration, seed int) *Ticker {
 	ch := make(chan time.Time)
+
 	ticker := &Ticker{
 		C:            ch,
 		c:            ch,
