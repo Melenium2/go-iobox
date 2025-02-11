@@ -122,4 +122,26 @@ func TestRun(t *testing.T) {
 
 		assert.Greater(t, ticks, 0)
 	})
+
+	t.Run("should stop the infinity cycle", func(t *testing.T) {
+		backoffConfig := Config{
+			Min:    1 * time.Second,
+			Max:    5 * time.Second,
+			Factor: 2,
+		}
+
+		backoff := NewBackoff(backoffConfig)
+
+		ticker := NewTicker(backoff, 5*time.Second, 2)
+
+		time.Sleep(100 * time.Millisecond)
+
+		ticker.Stop()
+
+		_, ok := <-ticker.C
+		assert.False(t, ok)
+
+		_, ok = <-ticker.stop
+		assert.False(t, ok)
+	})
 }
