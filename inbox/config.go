@@ -13,6 +13,11 @@ const (
 	//
 	// Default: 5 * time.Second.
 	DefaultIterationRate = 5 * time.Second
+	// DefaultIterationSeed is a number that is used to generate a random
+	// duration for the next worker iteration.
+	//
+	// Default: 2.
+	DefaultIterationSeed = 2
 	// DefaultHandlerTimeout is the timeout after which the handler
 	// will be stopped and the status will be set as Fail.
 	//
@@ -50,6 +55,7 @@ func emptyCallback(uuid.UUID, string) {}
 
 type config struct {
 	iterationRate    time.Duration
+	iterationSeed    int
 	handlerTimeout   time.Duration
 	maxRetryAttempts int
 	logger           Logger
@@ -60,6 +66,7 @@ type config struct {
 func defaultConfig() config {
 	return config{
 		iterationRate:    DefaultIterationRate,
+		iterationSeed:    DefaultIterationSeed,
 		handlerTimeout:   DefaultHandlerTimeout,
 		maxRetryAttempts: DefaultRetryAttempts,
 		logger:           DefaultLogger,
@@ -75,6 +82,14 @@ type Option func(config) config
 func WithIterationRate(dur time.Duration) Option {
 	return func(c config) config {
 		c.iterationRate = dur
+
+		return c
+	}
+}
+
+func WithIterationSeed(seed int) Option {
+	return func(c config) config {
+		c.iterationSeed = seed
 
 		return c
 	}
