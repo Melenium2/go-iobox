@@ -87,6 +87,8 @@ func WithIterationRate(dur time.Duration) Option {
 	}
 }
 
+// WithIterationSeed sets the seed value for generating a random
+// duration to add to DefaultIterationRate.
 func WithIterationSeed(seed int) Option {
 	return func(c config) config {
 		c.iterationSeed = seed

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/Melenium2/go-iobox/backoff"
 )
 
 type Broker interface {
@@ -62,18 +64,31 @@ func (o *Outbox) Start(ctx context.Context) error {
 		return fmt.Errorf("can not initialize outbox table, storage return err: %w", err)
 	}
 
-	go o.run()
+	go o.run(ctx)
 
 	return nil
 }
 
 // run starts the publishing process.
-func (o *Outbox) run() {
-	ticker := time.NewTicker(o.config.iterationRate)
+func (o *Outbox) run(ctx context.Context) {
+	var (
+		backoffConfig = backoff.Config{
+			Min: time.Second,
+			Max: o.config.iterationRate,
+		}
+		bf = backoff.NewBackoff(backoffConfig)
+	)
 
-	for range ticker.C {
-		if err := o.iteration(context.Background()); err != nil {
-			o.logger.Print(err.Error())
+	ticker := backoff.NewTicker(bf, o.config.iterationRate, o.config.iterationSeed)
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := o.iteration(context.Background()); err != nil {
+				o.logger.Print(err.Error())
+			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }
