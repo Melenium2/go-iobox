@@ -1,7 +1,6 @@
 package outbox
 
 import (
-	"log"
 	"time"
 
 	"github.com/Melenium2/go-iobox/retention"
@@ -33,16 +32,14 @@ const (
 	DebugMode = false
 )
 
-// TODO: Что то сделать с логером.
-var DefaultLogger = log.Default()
+func nopCallback(err error) {}
 
 type config struct {
 	iterationRate time.Duration
 	iterationSeed int
 	timeout       time.Duration
 	retention     retention.Config
-	logger        Logger
-	debugMode     bool
+	errorCallback ErrorCallback
 }
 
 func defaultConfig() config {
@@ -51,8 +48,7 @@ func defaultConfig() config {
 		iterationSeed: DefaultIterationSeed,
 		timeout:       DefaultPublishTimeout,
 		retention:     retention.Config{},
-		logger:        DefaultLogger,
-		debugMode:     DebugMode,
+		errorCallback: nopCallback,
 	}
 }
 
@@ -79,10 +75,11 @@ func WithIterationSeed(seed int) Option {
 	}
 }
 
-// WithLogger sets custom implementation of Logger.
-func WithLogger(logger Logger) Option {
+// TODO: Update doc.
+func WithErrorCallback(f ErrorCallback) Option {
 	return func(c config) config {
-		c.logger = logger
+		c.errorCallback = f
+		c.retention.ErrorCallback = f
 
 		return c
 	}
@@ -98,17 +95,15 @@ func WithPublishTimeout(dur time.Duration) Option {
 }
 
 // WithRetention sets the retention configuration for outbox table.
-func WithRetention(cfg retention.Config) Option {
+//
+// TODO: Doc about params.
+func WithRetention(eraseInterval time.Duration, windowDays int) Option {
 	return func(c config) config {
-		c.retention = cfg
+		currCfg := c.retention
+		currCfg.EraseInterval = eraseInterval
+		currCfg.RetentionWindow = windowDays
 
-		return c
-	}
-}
-
-func EnableDebugMode() Option {
-	return func(c config) config {
-		c.debugMode = true
+		c.retention = currCfg
 
 		return c
 	}

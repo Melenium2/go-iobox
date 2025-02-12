@@ -15,10 +15,7 @@ type Broker interface {
 	Publish(ctx context.Context, subject string, payload []byte) error
 }
 
-type Logger interface {
-	Print(...any)
-	Printf(string, ...any)
-}
+type ErrorCallback func(err error)
 
 // Outbox is struct that implement outbox pattern.
 //
@@ -30,8 +27,8 @@ type Logger interface {
 // More about outbox pattern you can read at
 // https://microservices.io/patterns/data/transactional-outbox.html.
 type Outbox struct {
-	broker Broker
-	logger Logger
+	broker      Broker
+	errCallback ErrorCallback
 
 	storage   *defaultStorage
 	retention *retention.Policy
@@ -40,18 +37,18 @@ type Outbox struct {
 
 // NewOutbox creates new outbox implementation.
 func NewOutbox(broker Broker, conn *sql.DB, opts ...Option) *Outbox {
-	defaultCfg := defaultConfig()
+	cfg := defaultConfig()
 
 	for _, opt := range opts {
-		defaultCfg = opt(defaultCfg)
+		cfg = opt(cfg)
 	}
 
 	return &Outbox{
-		broker:    broker,
-		logger:    defaultCfg.logger,
-		storage:   newStorage(conn),
-		retention: retention.NewPolicy(conn, tableName, defaultCfg.retention),
-		config:    defaultCfg,
+		broker:      broker,
+		errCallback: cfg.errorCallback,
+		storage:     newStorage(conn),
+		retention:   retention.NewPolicy(conn, tableName, cfg.retention),
+		config:      cfg,
 	}
 }
 
@@ -89,7 +86,7 @@ func (o *Outbox) run(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			if err := o.iteration(context.Background()); err != nil {
-				o.logger.Print(err.Error())
+				o.config.errorCallback(err)
 			}
 		case <-ctx.Done():
 			return
@@ -125,7 +122,7 @@ func (o *Outbox) iteration(ctx context.Context) error {
 			// This means that the current record has not yet been published.
 			record.Null()
 
-			o.logger.Print(err.Error())
+			o.config.errorCallback(err)
 		}
 	}
 
