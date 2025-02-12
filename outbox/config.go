@@ -23,11 +23,6 @@ const (
 	//
 	// Default: 2 * time.Second.
 	DefaultPublishTimeout = 2 * time.Second
-	// DebugMode enables additional logs for debug outbox process.
-	// Now, this option do nothing.
-	//
-	// Default: false.
-	DebugMode = false
 )
 
 type ErrorCallback func(err error)
@@ -76,10 +71,10 @@ func WithIterationSeed(seed int) Option {
 }
 
 // TODO: Update doc.
-func WithErrorCallback(f ErrorCallback) Option {
+func OnErrorCallback(callback ErrorCallback) Option {
 	return func(c config) config {
-		c.errorCallback = f
-		c.retention.ErrorCallback = f
+		c.errorCallback = callback
+		c.retention.ErrorCallback = callback
 
 		return c
 	}
