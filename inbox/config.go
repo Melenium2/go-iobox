@@ -1,7 +1,6 @@
 package inbox
 
 import (
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,38 +28,25 @@ const (
 	//
 	// Default: 5.
 	DefaultRetryAttempts = 5
-	// DebugMode enables additional logs for debug inbox process.
-	// Now, this option do nothing.
-	//
-	// Default: false.
-	DebugMode = false
 )
 
-var DefaultLogger = log.Default()
+type (
+	// DeadCallback prototype of function that can be called on failed or
+	// dead message.
+	DeadCallback  func(eventID uuid.UUID, msg string)
+	ErrorCallback func(err error)
+)
 
-// NopLogger logs nothing. Use it if you want
-// mute Inbox.
-type NopLogger struct{}
-
-func NewNopLogger() *NopLogger { return &NopLogger{} }
-
-func (l *NopLogger) Print(...any)          {}
-func (l *NopLogger) Printf(string, ...any) {}
-
-// ErrorCallback prototype of function that can be called on failed or
-// dead message.
-type ErrorCallback func(eventID uuid.UUID, msg string)
-
-func emptyCallback(uuid.UUID, string) {}
+func nopDeadCallback(uuid.UUID, string) {}
+func nopErrorCallback(err error)        {}
 
 type config struct {
 	iterationRate    time.Duration
 	iterationSeed    int
 	handlerTimeout   time.Duration
 	maxRetryAttempts int
-	logger           Logger
-	debugMode        bool
-	onDeadCallback   ErrorCallback
+	deadCallback     DeadCallback
+	errorCallback    ErrorCallback
 }
 
 func defaultConfig() config {
@@ -69,9 +55,8 @@ func defaultConfig() config {
 		iterationSeed:    DefaultIterationSeed,
 		handlerTimeout:   DefaultHandlerTimeout,
 		maxRetryAttempts: DefaultRetryAttempts,
-		logger:           DefaultLogger,
-		debugMode:        DebugMode,
-		onDeadCallback:   emptyCallback,
+		deadCallback:     nopDeadCallback,
+		errorCallback:    nopErrorCallback,
 	}
 }
 
@@ -106,15 +91,6 @@ func WithHandlerTimeout(dur time.Duration) Option {
 	}
 }
 
-// WithLogger sets custom implementation of Logger.
-func WithLogger(logger Logger) Option {
-	return func(c config) config {
-		c.logger = logger
-
-		return c
-	}
-}
-
 // WithMaxRetryAttempt sets custom max attempts for processing event.
 func WithMaxRetryAttempt(maxAttempt int) Option {
 	return func(c config) config {
@@ -124,20 +100,21 @@ func WithMaxRetryAttempt(maxAttempt int) Option {
 	}
 }
 
-func EnableDebugMode() Option {
+// OnDeadCallback sets custom callback for each message that can not
+// be processed and marks as 'dead'. Function fires if 'dead' message
+// detected.
+func OnDeadCallback(callback DeadCallback) Option {
 	return func(c config) config {
-		c.debugMode = true
+		c.deadCallback = callback
 
 		return c
 	}
 }
 
-// OnDeadCallback sets custom callback for each message that can not
-// be processed and marks as 'dead'. Function fires if 'dead' message
-// detected.
-func OnDeadCallback(callback ErrorCallback) Option {
+// TODO: Doc.
+func OnErrorCallback(callback ErrorCallback) Option {
 	return func(c config) config {
-		c.onDeadCallback = callback
+		c.errorCallback = callback
 
 		return c
 	}

@@ -9,11 +9,6 @@ import (
 	"github.com/Melenium2/go-iobox/backoff"
 )
 
-type Logger interface {
-	Print(...any)
-	Printf(string, ...any)
-}
-
 // Inbox is struct that implement inbox pattern.
 //
 // Writing all incoming events in a temporary table to future processing.
@@ -24,13 +19,11 @@ type Logger interface {
 // More about inbox pattern you can read at
 // https://softwaremill.com/microservices-101.
 type Inbox struct {
+	config config
+
 	handlers map[string][]Handler
 	storage  *defaultStorage
-	logger   Logger
-	config   config
 	backoff  *backoff.Backoff
-
-	onDead ErrorCallback
 }
 
 func NewInbox(registry *Registry, conn *sql.DB, opts ...Option) *Inbox {
@@ -43,10 +36,8 @@ func NewInbox(registry *Registry, conn *sql.DB, opts ...Option) *Inbox {
 	return &Inbox{
 		handlers: registry.Handlers(),
 		storage:  newStorage(conn),
-		logger:   cfg.logger,
 		config:   cfg,
 		backoff:  backoff.NewBackoff(),
-		onDead:   cfg.onDeadCallback,
 	}
 }
 
@@ -88,7 +79,7 @@ func (i *Inbox) run(ctx context.Context) {
 			}
 
 			if err != nil {
-				i.logger.Print(err.Error())
+				i.config.errorCallback(err)
 			}
 		case <-ctx.Done():
 			return
@@ -164,7 +155,7 @@ func (i *Inbox) failOrDead(record *Record, err error) *Record {
 	if attempt >= i.config.maxRetryAttempts {
 		record.Dead()
 
-		i.onDead(record.id, err.Error())
+		i.config.deadCallback(record.id, err.Error())
 
 		return record
 	}
