@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Melenium2/go-iobox/backoff"
+	"github.com/Melenium2/go-iobox/retention"
 )
 
 // Inbox is struct that implement inbox pattern.
@@ -21,9 +22,10 @@ import (
 type Inbox struct {
 	config config
 
-	handlers map[string][]Handler
-	storage  *defaultStorage
-	backoff  *backoff.Backoff
+	handlers  map[string][]Handler
+	storage   *defaultStorage
+	backoff   *backoff.Backoff
+	retention *retention.Policy
 }
 
 func NewInbox(registry *Registry, conn *sql.DB, opts ...Option) *Inbox {
@@ -34,10 +36,11 @@ func NewInbox(registry *Registry, conn *sql.DB, opts ...Option) *Inbox {
 	}
 
 	return &Inbox{
-		handlers: registry.Handlers(),
-		storage:  newStorage(conn),
-		config:   cfg,
-		backoff:  backoff.NewBackoff(),
+		handlers:  registry.Handlers(),
+		storage:   newStorage(conn),
+		config:    cfg,
+		backoff:   backoff.NewBackoff(),
+		retention: retention.NewPolicy(conn, tableName, cfg.retention),
 	}
 }
 
@@ -55,6 +58,7 @@ func (i *Inbox) Start(ctx context.Context) error {
 	}
 
 	go i.run(ctx)
+	go i.retention.Start(ctx)
 
 	return nil
 }
