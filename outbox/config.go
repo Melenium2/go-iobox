@@ -6,8 +6,6 @@ import (
 	"github.com/Melenium2/go-iobox/retention"
 )
 
-const tableName = "__outbox_table"
-
 const (
 	// DefaultIterationRate is the timeout after which all outbox events
 	// in the outbox table are sent to the broker.

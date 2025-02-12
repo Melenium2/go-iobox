@@ -12,6 +12,8 @@ import (
 	"github.com/Melenium2/go-iobox/outbox/migrations"
 )
 
+const tableName = "__outbox_table"
+
 type defaultStorage struct {
 	conn *sql.DB
 }
@@ -42,7 +44,7 @@ func (s *defaultStorage) InitOutboxTable(ctx context.Context) error {
 func (s *defaultStorage) Fetch(ctx context.Context) ([]*Record, error) {
 	dest := make([]*dtoRecord, 0)
 
-	sqlStr := "update __outbox_table set " +
+	sqlStr := "update " + tableName + " set " +
 		" 				status = $1," +
 		" 				updated_at = (now() at time zone 'utc') " +
 		" 		where status is null " +
@@ -65,7 +67,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 	}
 
 	var (
-		sqlStr = "update __outbox_table set " +
+		sqlStr = "update " + tableName + " set " +
 			" 			status = $1, " +
 			"			updated_at = (now() at time zone 'utc') " +
 			" 		where id = any ($2);"
@@ -89,7 +91,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 }
 
 func (s *defaultStorage) Insert(ctx context.Context, tx Execer, record *Record) error {
-	sqlStr := "insert into __outbox_table (id, event_type, payload) values ($1, $2, $3) " +
+	sqlStr := "insert into " + tableName + " (id, event_type, payload) values ($1, $2, $3) " +
 		" on conflict do nothing;"
 
 	payload, err := record.payload.MarshalJSON()
