@@ -10,6 +10,8 @@ import (
 	"github.com/Melenium2/go-iobox/migration"
 )
 
+const tableName = "__inbox_table"
+
 type defaultStorage struct {
 	conn *sql.DB
 }
@@ -40,7 +42,7 @@ func (s *defaultStorage) InitInboxTable(ctx context.Context) error {
 func (s *defaultStorage) Fetch(ctx context.Context, fetchTime time.Time) ([]*Record, error) {
 	dest := make([]*dtoRecord, 0)
 
-	sqlStr := "update __inbox_table set " +
+	sqlStr := "update " + tableName + " set " +
 		" 				status = $1," +
 		" 				updated_at = (now() at time zone 'utc') " +
 		" 		where " +
@@ -64,7 +66,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 		return nil
 	}
 
-	sqlStr := "update __inbox_table set " +
+	sqlStr := "update " + tableName + " set " +
 		" 			status = $1, " +
 		" 			attempt = $2, " +
 		" 			error_message = $3, " +
@@ -112,7 +114,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 }
 
 func (s *defaultStorage) Insert(ctx context.Context, record *Record) error {
-	sqlStr := "insert into __inbox_table (id, event_type, handler_key, payload) " +
+	sqlStr := "insert into " + tableName + " (id, event_type, handler_key, payload) " +
 		" values ($1, $2, $3, $4) on conflict (id, handler_key) do nothing;"
 
 	_, err := s.conn.ExecContext(
