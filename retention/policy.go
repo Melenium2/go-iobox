@@ -12,27 +12,26 @@ var (
 	DefaultRetentionWindow = 60
 )
 
-type Logger interface {
-	Print(...any)
-	Printf(string, ...any)
-}
+func nopCallback(err error) {}
 
 type Config struct {
 	EraseInterval   time.Duration
 	RetentionWindow int
-	Logger          Logger
+	ErrorCallback   func(err error)
 }
 
 func defaultConfig() Config {
 	return Config{
 		EraseInterval:   DefaultEraseInterval,
 		RetentionWindow: DefaultRetentionWindow,
+		ErrorCallback:   nopCallback,
 	}
 }
 
 type Policy struct {
-	tableName string
-	config    Config
+	tableName   string
+	config      Config
+	errCallback func(err error)
 
 	conn *sql.DB
 }
@@ -48,10 +47,15 @@ func NewPolicy(conn *sql.DB, tableName string, config ...Config) *Policy {
 		cfg.RetentionWindow = config[0].RetentionWindow
 	}
 
+	if len(config) > 0 && config[0].ErrorCallback != nil {
+		cfg.ErrorCallback = config[0].ErrorCallback
+	}
+
 	return &Policy{
-		conn:      conn,
-		tableName: tableName,
-		config:    cfg,
+		conn:        conn,
+		tableName:   tableName,
+		errCallback: cfg.ErrorCallback,
+		config:      cfg,
 	}
 }
 
@@ -63,13 +67,10 @@ func (p *Policy) Start(ctx context.Context) {
 		case now := <-ticker.C:
 			tailDate := now.AddDate(0, 0, p.config.RetentionWindow)
 
-			deletedRows, err := p.erase(context.Background(), tailDate)
+			_, err := p.erase(context.Background(), tailDate)
 			if err != nil {
-				// TODO: log error.
+				p.errCallback(err)
 			}
-
-			_ = deletedRows
-		// TODO: log deleted rows.
 		case <-ctx.Done():
 			return
 		}
