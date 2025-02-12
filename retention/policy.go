@@ -38,20 +38,20 @@ type Policy struct {
 }
 
 func NewPolicy(conn *sql.DB, tableName string, config ...Config) *Policy {
-	defaultConfig := defaultConfig()
+	cfg := defaultConfig()
 
 	if len(config) > 0 && config[0].EraseInterval > 0 {
-		defaultConfig.EraseInterval = config[0].EraseInterval
+		cfg.EraseInterval = config[0].EraseInterval
 	}
 
 	if len(config) > 0 && config[0].RetentionWindow > 0 {
-		defaultConfig.RetentionWindow = config[0].RetentionWindow
+		cfg.RetentionWindow = config[0].RetentionWindow
 	}
 
 	return &Policy{
 		conn:      conn,
 		tableName: tableName,
-		config:    defaultConfig,
+		config:    cfg,
 	}
 }
 
