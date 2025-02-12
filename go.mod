@@ -1,6 +1,6 @@
 module github.com/Melenium2/go-iobox
 
-go 1.20
+go 1.23
 
 require (
 	github.com/google/uuid v1.3.0
