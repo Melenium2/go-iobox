@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/Melenium2/go-iobox/retention"
 )
 
 const (
@@ -45,6 +47,7 @@ type config struct {
 	iterationSeed    int
 	handlerTimeout   time.Duration
 	maxRetryAttempts int
+	retention        retention.Config
 	deadCallback     DeadCallback
 	errorCallback    ErrorCallback
 }
@@ -55,6 +58,7 @@ func defaultConfig() config {
 		iterationSeed:    DefaultIterationSeed,
 		handlerTimeout:   DefaultHandlerTimeout,
 		maxRetryAttempts: DefaultRetryAttempts,
+		retention:        retention.Config{},
 		deadCallback:     nopDeadCallback,
 		errorCallback:    nopErrorCallback,
 	}
@@ -100,6 +104,21 @@ func WithMaxRetryAttempt(maxAttempt int) Option {
 	}
 }
 
+// WithRetention sets the retention configuration for outbox table.
+//
+// TODO: Doc about params.
+func WithRetention(eraseInterval time.Duration, windowDays int) Option {
+	return func(c config) config {
+		currCfg := c.retention
+		currCfg.EraseInterval = eraseInterval
+		currCfg.RetentionWindow = windowDays
+
+		c.retention = currCfg
+
+		return c
+	}
+}
+
 // OnDeadCallback sets custom callback for each message that can not
 // be processed and marks as 'dead'. Function fires if 'dead' message
 // detected.
@@ -115,6 +134,7 @@ func OnDeadCallback(callback DeadCallback) Option {
 func OnErrorCallback(callback ErrorCallback) Option {
 	return func(c config) config {
 		c.errorCallback = callback
+		c.retention.ErrorCallback = callback
 
 		return c
 	}
