@@ -70,16 +70,6 @@ func WithIterationSeed(seed int) Option {
 	}
 }
 
-// TODO: Update doc.
-func OnErrorCallback(callback ErrorCallback) Option {
-	return func(c config) config {
-		c.errorCallback = callback
-		c.retention.ErrorCallback = callback
-
-		return c
-	}
-}
-
 // WithPublishTimeout sets a custom timeout for publishing next event.
 func WithPublishTimeout(dur time.Duration) Option {
 	return func(c config) config {
@@ -99,6 +89,16 @@ func WithRetention(eraseInterval time.Duration, windowDays int) Option {
 		currCfg.RetentionWindow = windowDays
 
 		c.retention = currCfg
+
+		return c
+	}
+}
+
+// TODO: Update doc.
+func OnErrorCallback(callback ErrorCallback) Option {
+	return func(c config) config {
+		c.errorCallback = callback
+		c.retention.ErrorCallback = callback
 
 		return c
 	}
