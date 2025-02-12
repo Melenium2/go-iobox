@@ -29,9 +29,8 @@ func defaultConfig() Config {
 }
 
 type Policy struct {
-	tableName   string
-	config      Config
-	errCallback func(err error)
+	tableName string
+	config    Config
 
 	conn *sql.DB
 }
@@ -52,10 +51,9 @@ func NewPolicy(conn *sql.DB, tableName string, config ...Config) *Policy {
 	}
 
 	return &Policy{
-		conn:        conn,
-		tableName:   tableName,
-		errCallback: cfg.ErrorCallback,
-		config:      cfg,
+		conn:      conn,
+		tableName: tableName,
+		config:    cfg,
 	}
 }
 
@@ -69,7 +67,7 @@ func (p *Policy) Start(ctx context.Context) {
 
 			_, err := p.erase(context.Background(), tailDate)
 			if err != nil {
-				p.errCallback(err)
+				p.config.ErrorCallback(err)
 			}
 		case <-ctx.Done():
 			return
