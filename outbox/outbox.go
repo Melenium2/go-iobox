@@ -15,8 +15,6 @@ type Broker interface {
 	Publish(ctx context.Context, subject string, payload []byte) error
 }
 
-type ErrorCallback func(err error)
-
 // Outbox is struct that implement outbox pattern.
 //
 // Writing all outgoing events in a temporary table in the same transaction
@@ -27,12 +25,11 @@ type ErrorCallback func(err error)
 // More about outbox pattern you can read at
 // https://microservices.io/patterns/data/transactional-outbox.html.
 type Outbox struct {
-	broker      Broker
-	errCallback ErrorCallback
+	config config
 
+	broker    Broker
 	storage   *defaultStorage
 	retention *retention.Policy
-	config    config
 }
 
 // NewOutbox creates new outbox implementation.
@@ -44,11 +41,10 @@ func NewOutbox(broker Broker, conn *sql.DB, opts ...Option) *Outbox {
 	}
 
 	return &Outbox{
-		broker:      broker,
-		errCallback: cfg.errorCallback,
-		storage:     newStorage(conn),
-		retention:   retention.NewPolicy(conn, tableName, cfg.retention),
-		config:      cfg,
+		broker:    broker,
+		storage:   newStorage(conn),
+		retention: retention.NewPolicy(conn, tableName, cfg.retention),
+		config:    cfg,
 	}
 }
 

@@ -30,7 +30,9 @@ const (
 	DebugMode = false
 )
 
-func nopCallback(err error) {}
+type ErrorCallback func(err error)
+
+func nopCallback(error) {}
 
 type config struct {
 	iterationRate time.Duration
