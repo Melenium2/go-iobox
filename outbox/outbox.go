@@ -46,16 +46,11 @@ func NewOutbox(broker Broker, conn *sql.DB, opts ...Option) *Outbox {
 		defaultCfg = opt(defaultCfg)
 	}
 
-	retentionConfig := retention.Config{
-		RetentionWindow: 60,
-		EraseInterval:   24 * time.Hour,
-	}
-
 	return &Outbox{
 		broker:    broker,
 		logger:    defaultCfg.logger,
 		storage:   newStorage(conn),
-		retention: retention.NewPolicy(conn, "table_name", retentionConfig),
+		retention: retention.NewPolicy(conn, tableName, defaultCfg.retention),
 		config:    defaultCfg,
 	}
 }

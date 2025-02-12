@@ -3,7 +3,11 @@ package outbox
 import (
 	"log"
 	"time"
+
+	"github.com/Melenium2/go-iobox/retention"
 )
+
+const tableName = "__outbox_table"
 
 const (
 	// DefaultIterationRate is the timeout after which all outbox events
@@ -29,12 +33,14 @@ const (
 	DebugMode = false
 )
 
+// TODO: Что то сделать с логером.
 var DefaultLogger = log.Default()
 
 type config struct {
 	iterationRate time.Duration
 	iterationSeed int
 	timeout       time.Duration
+	retention     retention.Config
 	logger        Logger
 	debugMode     bool
 }
@@ -44,6 +50,7 @@ func defaultConfig() config {
 		iterationRate: DefaultIterationRate,
 		iterationSeed: DefaultIterationSeed,
 		timeout:       DefaultPublishTimeout,
+		retention:     retention.Config{},
 		logger:        DefaultLogger,
 		debugMode:     DebugMode,
 	}
@@ -85,6 +92,15 @@ func WithLogger(logger Logger) Option {
 func WithPublishTimeout(dur time.Duration) Option {
 	return func(c config) config {
 		c.timeout = dur
+
+		return c
+	}
+}
+
+// WithRetention sets the retention configuration for outbox table.
+func WithRetention(cfg retention.Config) Option {
+	return func(c config) config {
+		c.retention = cfg
 
 		return c
 	}
