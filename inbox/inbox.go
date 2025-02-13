@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Melenium2/go-iobox/backoff"
@@ -103,7 +104,7 @@ func (i *Inbox) iteration() error {
 
 	records, err := i.storage.Fetch(ctx, time.Now().UTC())
 	if err != nil {
-		return err
+		return fmt.Errorf("records not fetched, %w", err)
 	}
 
 	for _, record := range records {
