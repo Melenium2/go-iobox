@@ -63,7 +63,7 @@ func (p *Policy) Start(ctx context.Context) {
 	for {
 		select {
 		case now := <-ticker.C:
-			tailDate := now.AddDate(0, 0, p.config.RetentionWindow)
+			tailDate := p.tailDate(now, p.config.RetentionWindow)
 
 			_, err := p.erase(context.Background(), tailDate)
 			if err != nil {
@@ -73,6 +73,10 @@ func (p *Policy) Start(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (p *Policy) tailDate(now time.Time, window int) time.Time {
+	return now.AddDate(0, 0, -window)
 }
 
 func (p *Policy) erase(ctx context.Context, tailDate time.Time) (int64, error) {
