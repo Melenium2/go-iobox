@@ -99,7 +99,7 @@ func (o *Outbox) iteration(ctx context.Context) error {
 	}
 
 	if err != nil {
-		return err
+		return fmt.Errorf("records not fetched, %w", err)
 	}
 
 	for _, record := range records {
@@ -109,7 +109,7 @@ func (o *Outbox) iteration(ctx context.Context) error {
 		if err != nil {
 			record.Fail()
 
-			return err
+			return fmt.Errorf("payload not marshaled, %w", err)
 		}
 
 		if err := o.publish(ctx, record.eventType, payload); err != nil {
@@ -134,8 +134,11 @@ func (o *Outbox) publish(ctx context.Context, eventType string, payload []byte) 
 	defer cancel()
 
 	err := o.broker.Publish(ctx, eventType, payload)
+	if err != nil {
+		return fmt.Errorf("event %q not published, %w", eventType, err)
+	}
 
-	return err
+	return nil
 }
 
 func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {
