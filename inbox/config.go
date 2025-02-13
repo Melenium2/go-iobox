@@ -48,8 +48,8 @@ type config struct {
 	handlerTimeout   time.Duration
 	maxRetryAttempts int
 	retention        retention.Config
-	deadCallback     DeadCallback
-	errorCallback    ErrorCallback
+	onDead           DeadCallback
+	onError          ErrorCallback
 }
 
 func defaultConfig() config {
@@ -59,8 +59,8 @@ func defaultConfig() config {
 		handlerTimeout:   DefaultHandlerTimeout,
 		maxRetryAttempts: DefaultRetryAttempts,
 		retention:        retention.Config{},
-		deadCallback:     nopDeadCallback,
-		errorCallback:    nopErrorCallback,
+		onDead:           nopDeadCallback,
+		onError:          nopErrorCallback,
 	}
 }
 
@@ -124,7 +124,7 @@ func WithRetention(eraseInterval time.Duration, windowDays int) Option {
 // detected.
 func OnDeadCallback(callback DeadCallback) Option {
 	return func(c config) config {
-		c.deadCallback = callback
+		c.onDead = callback
 
 		return c
 	}
@@ -133,7 +133,7 @@ func OnDeadCallback(callback DeadCallback) Option {
 // TODO: Doc.
 func OnErrorCallback(callback ErrorCallback) Option {
 	return func(c config) config {
-		c.errorCallback = callback
+		c.onError = callback
 		c.retention.ErrorCallback = callback
 
 		return c

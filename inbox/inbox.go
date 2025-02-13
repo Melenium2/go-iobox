@@ -83,7 +83,7 @@ func (i *Inbox) run(ctx context.Context) {
 			}
 
 			if err != nil {
-				i.config.errorCallback(err)
+				i.config.onError(err)
 			}
 		case <-ctx.Done():
 			return
@@ -159,7 +159,7 @@ func (i *Inbox) failOrDead(record *Record, err error) *Record {
 	if attempt >= i.config.maxRetryAttempts {
 		record.Dead()
 
-		i.config.deadCallback(record.id, err.Error())
+		i.config.onDead(record.id, err.Error())
 
 		return record
 	}
