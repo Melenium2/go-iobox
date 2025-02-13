@@ -34,7 +34,7 @@ type config struct {
 	iterationSeed int
 	timeout       time.Duration
 	retention     retention.Config
-	errorCallback ErrorCallback
+	onError       ErrorCallback
 }
 
 func defaultConfig() config {
@@ -43,7 +43,7 @@ func defaultConfig() config {
 		iterationSeed: DefaultIterationSeed,
 		timeout:       DefaultPublishTimeout,
 		retention:     retention.Config{},
-		errorCallback: nopCallback,
+		onError:       nopCallback,
 	}
 }
 
@@ -97,7 +97,7 @@ func WithRetention(eraseInterval time.Duration, windowDays int) Option {
 // TODO: Update doc.
 func OnErrorCallback(callback ErrorCallback) Option {
 	return func(c config) config {
-		c.errorCallback = callback
+		c.onError = callback
 		c.retention.ErrorCallback = callback
 
 		return c

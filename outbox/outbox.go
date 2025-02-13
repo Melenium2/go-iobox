@@ -82,7 +82,7 @@ func (o *Outbox) run(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			if err := o.iteration(context.Background()); err != nil {
-				o.config.errorCallback(err)
+				o.config.onError(err)
 			}
 		case <-ctx.Done():
 			return
@@ -118,7 +118,7 @@ func (o *Outbox) iteration(ctx context.Context) error {
 			// This means that the current record has not yet been published.
 			record.Null()
 
-			o.config.errorCallback(err)
+			o.config.onError(err)
 		}
 	}
 
