@@ -11,31 +11,24 @@ import (
 const (
 	// DefaultIterationRate is the timeout after which all events
 	// in the inbox table will be processed.
-	//
-	// Default: 5 * time.Second.
 	DefaultIterationRate = 5 * time.Second
 	// DefaultIterationSeed is a number that is used to generate a random
 	// duration for the next worker iteration.
-	//
-	// Default: 2.
 	DefaultIterationSeed = 2
 	// DefaultHandlerTimeout is the timeout after which the handler
 	// will be stopped and the status will be set as Fail.
-	//
-	// Default: 10 * time.Second.
 	DefaultHandlerTimeout = 10 * time.Second
 	// DefaultRetryAttempts is the max attempts before event marks
 	// as 'dead'. 'Dead' means that the event will no longer be
 	// processed.
-	//
-	// Default: 5.
 	DefaultRetryAttempts = 5
 )
 
 type (
-	// DeadCallback prototype of function that can be called on failed or
-	// dead message.
-	DeadCallback  func(eventID uuid.UUID, msg string)
+	// DeadCallback prototype of function that is called if message is 'dead'
+	DeadCallback func(eventID uuid.UUID, msg string)
+	// ErrorCallback prototype of function that is called if errors occurs
+	// during inbox process.
 	ErrorCallback func(err error)
 )
 
@@ -106,7 +99,10 @@ func WithMaxRetryAttempt(maxAttempt int) Option {
 
 // WithRetention sets the retention configuration for outbox table.
 //
-// TODO: Doc about params.
+// Arguments:
+//
+//	eraseInterval - interval for the next erase execution.
+//	windowDays - the data older than the specified number of days will be deleted.
 func WithRetention(eraseInterval time.Duration, windowDays int) Option {
 	return func(c config) config {
 		currCfg := c.retention
@@ -130,7 +126,8 @@ func OnDeadCallback(callback DeadCallback) Option {
 	}
 }
 
-// TODO: Doc.
+// ErrorCallback sets custom callback that is called if errors occurs
+// during inbox process.
 func OnErrorCallback(callback ErrorCallback) Option {
 	return func(c config) config {
 		c.onError = callback
