@@ -7,19 +7,32 @@ import (
 	"time"
 )
 
-// TODO: Везде написать доку.
-
 var (
-	DefaultEraseInterval   = 24 * time.Hour
+	// DefaultEraseInterval is default interval for next iteration
+	// of erasing old data.
+	DefaultEraseInterval = 24 * time.Hour
+	// DefaultRetentionWindow is the interval of days that will
+	// not be deleted. All data older than current number of days
+	// will be deleted.
 	DefaultRetentionWindow = 60
 )
 
 func nopCallback(err error) {}
 
 type Config struct {
-	EraseInterval   time.Duration
+	// Interval for the next iteratin of erasing old data.
+	//
+	// Optional. By default: DefaultEraseInterval.
+	EraseInterval time.Duration
+	// The data older then current number of days will be deleted
+	// at the next iteration.
+	//
+	// Optional. Default: DefaultRetentionWindow.
 	RetentionWindow int
-	ErrorCallback   func(err error)
+	// Callback to handle an error if one occurs while erasing data.
+	//
+	// Optional.
+	ErrorCallback func(err error)
 }
 
 func defaultConfig() Config {
@@ -30,6 +43,8 @@ func defaultConfig() Config {
 	}
 }
 
+// Policy is a structure that deletes data older than specified interval.
+// This is useful if we do not need to keep all old data all the time.
 type Policy struct {
 	tableName string
 	config    Config
@@ -37,6 +52,13 @@ type Policy struct {
 	conn *sql.DB
 }
 
+// NewPolicy creates new Policy to erasing old data at the specified table.
+//
+// Arguments.
+//
+//	conn - connection to the database we need to interact with.
+//	tableName - the name of the table in which we need to save the data window only.
+//	config - optional configuration of retention policy.
 func NewPolicy(conn *sql.DB, tableName string, config ...Config) *Policy {
 	cfg := defaultConfig()
 
@@ -59,6 +81,8 @@ func NewPolicy(conn *sql.DB, tableName string, config ...Config) *Policy {
 	}
 }
 
+// Start retention process. The function is blocking the main loop.
+// Close the context to stop erasing process.
 func (p *Policy) Start(ctx context.Context) {
 	ticker := time.NewTicker(p.config.EraseInterval)
 
