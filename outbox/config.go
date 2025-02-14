@@ -9,22 +9,18 @@ import (
 const (
 	// DefaultIterationRate is the timeout after which all outbox events
 	// in the outbox table are sent to the broker.
-	//
-	// Default: 5 * time.Second.
 	DefaultIterationRate = 5 * time.Second
 	// DefaultIterationSeed is a number that is used to generate a random
 	// duration for the next worker iteration.
-	//
-	// Default: 2.
 	DefaultIterationSeed = 2
 	// DefaultPublishTimeout is the timeout after which the publication
 	// of the current event is canceled. The current event marked as 'not yet published', and
 	// processing continues.
-	//
-	// Default: 2 * time.Second.
 	DefaultPublishTimeout = 2 * time.Second
 )
 
+// ErrorCallback prototype of function that is called if errors occurs
+// during outbox process.
 type ErrorCallback func(err error)
 
 func nopCallback(error) {}
@@ -81,7 +77,10 @@ func WithPublishTimeout(dur time.Duration) Option {
 
 // WithRetention sets the retention configuration for outbox table.
 //
-// TODO: Doc about params.
+// Arguments:
+//
+//	eraseInterval - interval for the next erase execution.
+//	windowDays - the data older than the specified number of days will be deleted.
 func WithRetention(eraseInterval time.Duration, windowDays int) Option {
 	return func(c config) config {
 		currCfg := c.retention
@@ -94,7 +93,8 @@ func WithRetention(eraseInterval time.Duration, windowDays int) Option {
 	}
 }
 
-// TODO: Update doc.
+// ErrorCallback sets custom callback that is called if errors occurs
+// during outbox process.
 func OnErrorCallback(callback ErrorCallback) Option {
 	return func(c config) config {
 		c.onError = callback
