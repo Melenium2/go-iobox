@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// TODO: Везде написать доку.
+
 var (
 	DefaultEraseInterval   = 24 * time.Hour
 	DefaultRetentionWindow = 60
@@ -65,8 +67,7 @@ func (p *Policy) Start(ctx context.Context) {
 		case now := <-ticker.C:
 			tailDate := p.tailDate(now, p.config.RetentionWindow)
 
-			_, err := p.erase(context.Background(), tailDate)
-			if err != nil {
+			if err := p.iteration(tailDate); err != nil {
 				p.config.ErrorCallback(err)
 			}
 		case <-ctx.Done():
@@ -77,6 +78,14 @@ func (p *Policy) Start(ctx context.Context) {
 
 func (p *Policy) tailDate(now time.Time, window int) time.Time {
 	return now.AddDate(0, 0, -window)
+}
+
+func (p *Policy) iteration(tailDate time.Time) error {
+	ctx := context.Background()
+
+	_, err := p.erase(ctx, tailDate)
+
+	return err
 }
 
 func (p *Policy) erase(ctx context.Context, tailDate time.Time) (int64, error) {
