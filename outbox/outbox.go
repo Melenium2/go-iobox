@@ -8,15 +8,11 @@ import (
 	"time"
 
 	"github.com/Melenium2/go-iobox/backoff"
+	"github.com/Melenium2/go-iobox/retention"
 )
 
 type Broker interface {
 	Publish(ctx context.Context, subject string, payload []byte) error
-}
-
-type Logger interface {
-	Print(...any)
-	Printf(string, ...any)
 }
 
 // Outbox is struct that implement outbox pattern.
@@ -29,26 +25,26 @@ type Logger interface {
 // More about outbox pattern you can read at
 // https://microservices.io/patterns/data/transactional-outbox.html.
 type Outbox struct {
-	broker Broker
-	logger Logger
+	config config
 
-	storage *defaultStorage
-	config  config
+	broker    Broker
+	storage   *defaultStorage
+	retention *retention.Policy
 }
 
 // NewOutbox creates new outbox implementation.
 func NewOutbox(broker Broker, conn *sql.DB, opts ...Option) *Outbox {
-	defaultCfg := defaultConfig()
+	cfg := defaultConfig()
 
 	for _, opt := range opts {
-		defaultCfg = opt(defaultCfg)
+		cfg = opt(cfg)
 	}
 
 	return &Outbox{
-		broker:  broker,
-		logger:  defaultCfg.logger,
-		storage: newStorage(conn),
-		config:  defaultCfg,
+		broker:    broker,
+		storage:   newStorage(conn),
+		retention: retention.NewPolicy(conn, tableName, cfg.retention),
+		config:    cfg,
 	}
 }
 
@@ -65,6 +61,7 @@ func (o *Outbox) Start(ctx context.Context) error {
 	}
 
 	go o.run(ctx)
+	go o.retention.Start(ctx)
 
 	return nil
 }
@@ -85,7 +82,7 @@ func (o *Outbox) run(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			if err := o.iteration(context.Background()); err != nil {
-				o.logger.Print(err.Error())
+				o.config.onError(err)
 			}
 		case <-ctx.Done():
 			return
@@ -102,7 +99,7 @@ func (o *Outbox) iteration(ctx context.Context) error {
 	}
 
 	if err != nil {
-		return err
+		return fmt.Errorf("records not fetched, %w", err)
 	}
 
 	for _, record := range records {
@@ -112,7 +109,7 @@ func (o *Outbox) iteration(ctx context.Context) error {
 		if err != nil {
 			record.Fail()
 
-			return err
+			return fmt.Errorf("payload not marshaled, %w", err)
 		}
 
 		if err := o.publish(ctx, record.eventType, payload); err != nil {
@@ -121,7 +118,7 @@ func (o *Outbox) iteration(ctx context.Context) error {
 			// This means that the current record has not yet been published.
 			record.Null()
 
-			o.logger.Print(err.Error())
+			o.config.onError(err)
 		}
 	}
 
@@ -137,8 +134,11 @@ func (o *Outbox) publish(ctx context.Context, eventType string, payload []byte) 
 	defer cancel()
 
 	err := o.broker.Publish(ctx, eventType, payload)
+	if err != nil {
+		return fmt.Errorf("event %q not published, %w", eventType, err)
+	}
 
-	return err
+	return nil
 }
 
 func (o *Outbox) updateStatus(ctx context.Context, records []*Record) error {

@@ -1,66 +1,48 @@
 package inbox
 
 import (
-	"log"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/Melenium2/go-iobox/retention"
 )
 
 const (
 	// DefaultIterationRate is the timeout after which all events
 	// in the inbox table will be processed.
-	//
-	// Default: 5 * time.Second.
 	DefaultIterationRate = 5 * time.Second
 	// DefaultIterationSeed is a number that is used to generate a random
 	// duration for the next worker iteration.
-	//
-	// Default: 2.
 	DefaultIterationSeed = 2
 	// DefaultHandlerTimeout is the timeout after which the handler
 	// will be stopped and the status will be set as Fail.
-	//
-	// Default: 10 * time.Second.
 	DefaultHandlerTimeout = 10 * time.Second
 	// DefaultRetryAttempts is the max attempts before event marks
 	// as 'dead'. 'Dead' means that the event will no longer be
 	// processed.
-	//
-	// Default: 5.
 	DefaultRetryAttempts = 5
-	// DebugMode enables additional logs for debug inbox process.
-	// Now, this option do nothing.
-	//
-	// Default: false.
-	DebugMode = false
 )
 
-var DefaultLogger = log.Default()
+type (
+	// DeadCallback prototype of function that is called if message is 'dead'
+	DeadCallback func(eventID uuid.UUID, msg string)
+	// ErrorCallback prototype of function that is called if errors occurs
+	// during inbox process.
+	ErrorCallback func(err error)
+)
 
-// NopLogger logs nothing. Use it if you want
-// mute Inbox.
-type NopLogger struct{}
-
-func NewNopLogger() *NopLogger { return &NopLogger{} }
-
-func (l *NopLogger) Print(...any)          {}
-func (l *NopLogger) Printf(string, ...any) {}
-
-// ErrorCallback prototype of function that can be called on failed or
-// dead message.
-type ErrorCallback func(eventID uuid.UUID, msg string)
-
-func emptyCallback(uuid.UUID, string) {}
+func nopDeadCallback(uuid.UUID, string) {}
+func nopErrorCallback(err error)        {}
 
 type config struct {
 	iterationRate    time.Duration
 	iterationSeed    int
 	handlerTimeout   time.Duration
 	maxRetryAttempts int
-	logger           Logger
-	debugMode        bool
-	onDeadCallback   ErrorCallback
+	retention        retention.Config
+	onDead           DeadCallback
+	onError          ErrorCallback
 }
 
 func defaultConfig() config {
@@ -69,9 +51,9 @@ func defaultConfig() config {
 		iterationSeed:    DefaultIterationSeed,
 		handlerTimeout:   DefaultHandlerTimeout,
 		maxRetryAttempts: DefaultRetryAttempts,
-		logger:           DefaultLogger,
-		debugMode:        DebugMode,
-		onDeadCallback:   emptyCallback,
+		retention:        retention.Config{},
+		onDead:           nopDeadCallback,
+		onError:          nopErrorCallback,
 	}
 }
 
@@ -106,15 +88,6 @@ func WithHandlerTimeout(dur time.Duration) Option {
 	}
 }
 
-// WithLogger sets custom implementation of Logger.
-func WithLogger(logger Logger) Option {
-	return func(c config) config {
-		c.logger = logger
-
-		return c
-	}
-}
-
 // WithMaxRetryAttempt sets custom max attempts for processing event.
 func WithMaxRetryAttempt(maxAttempt int) Option {
 	return func(c config) config {
@@ -124,9 +97,19 @@ func WithMaxRetryAttempt(maxAttempt int) Option {
 	}
 }
 
-func EnableDebugMode() Option {
+// WithRetention sets the retention configuration for inbox table.
+//
+// Arguments:
+//
+//	eraseInterval - interval for the next erase execution.
+//	windowDays - the data older than the specified number of days will be deleted.
+func WithRetention(eraseInterval time.Duration, windowDays int) Option {
 	return func(c config) config {
-		c.debugMode = true
+		currCfg := c.retention
+		currCfg.EraseInterval = eraseInterval
+		currCfg.RetentionWindowDays = windowDays
+
+		c.retention = currCfg
 
 		return c
 	}
@@ -135,9 +118,20 @@ func EnableDebugMode() Option {
 // OnDeadCallback sets custom callback for each message that can not
 // be processed and marks as 'dead'. Function fires if 'dead' message
 // detected.
-func OnDeadCallback(callback ErrorCallback) Option {
+func OnDeadCallback(callback DeadCallback) Option {
 	return func(c config) config {
-		c.onDeadCallback = callback
+		c.onDead = callback
+
+		return c
+	}
+}
+
+// ErrorCallback sets custom callback that is called if errors occurs
+// during inbox process.
+func OnErrorCallback(callback ErrorCallback) Option {
+	return func(c config) config {
+		c.onError = callback
+		c.retention.ErrorCallback = callback
 
 		return c
 	}

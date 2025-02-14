@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-	"github.com/streadway/amqp"
+	amqp "github.com/rabbitmq/amqp091-go"
 
 	"github.com/Melenium2/go-iobox/inbox"
 )

@@ -1,42 +1,36 @@
 package outbox
 
 import (
-	"log"
 	"time"
+
+	"github.com/Melenium2/go-iobox/retention"
 )
 
 const (
 	// DefaultIterationRate is the timeout after which all outbox events
 	// in the outbox table are sent to the broker.
-	//
-	// Default: 5 * time.Second.
 	DefaultIterationRate = 5 * time.Second
 	// DefaultIterationSeed is a number that is used to generate a random
 	// duration for the next worker iteration.
-	//
-	// Default: 2.
 	DefaultIterationSeed = 2
 	// DefaultPublishTimeout is the timeout after which the publication
 	// of the current event is canceled. The current event marked as 'not yet published', and
 	// processing continues.
-	//
-	// Default: 2 * time.Second.
 	DefaultPublishTimeout = 2 * time.Second
-	// DebugMode enables additional logs for debug outbox process.
-	// Now, this option do nothing.
-	//
-	// Default: false.
-	DebugMode = false
 )
 
-var DefaultLogger = log.Default()
+// ErrorCallback prototype of function that is called if errors occurs
+// during outbox process.
+type ErrorCallback func(err error)
+
+func nopCallback(error) {}
 
 type config struct {
 	iterationRate time.Duration
 	iterationSeed int
 	timeout       time.Duration
-	logger        Logger
-	debugMode     bool
+	retention     retention.Config
+	onError       ErrorCallback
 }
 
 func defaultConfig() config {
@@ -44,8 +38,8 @@ func defaultConfig() config {
 		iterationRate: DefaultIterationRate,
 		iterationSeed: DefaultIterationSeed,
 		timeout:       DefaultPublishTimeout,
-		logger:        DefaultLogger,
-		debugMode:     DebugMode,
+		retention:     retention.Config{},
+		onError:       nopCallback,
 	}
 }
 
@@ -72,15 +66,6 @@ func WithIterationSeed(seed int) Option {
 	}
 }
 
-// WithLogger sets custom implementation of Logger.
-func WithLogger(logger Logger) Option {
-	return func(c config) config {
-		c.logger = logger
-
-		return c
-	}
-}
-
 // WithPublishTimeout sets a custom timeout for publishing next event.
 func WithPublishTimeout(dur time.Duration) Option {
 	return func(c config) config {
@@ -90,9 +75,30 @@ func WithPublishTimeout(dur time.Duration) Option {
 	}
 }
 
-func EnableDebugMode() Option {
+// WithRetention sets the retention configuration for outbox table.
+//
+// Arguments:
+//
+//	eraseInterval - interval for the next erase execution.
+//	windowDays - the data older than the specified number of days will be deleted.
+func WithRetention(eraseInterval time.Duration, windowDays int) Option {
 	return func(c config) config {
-		c.debugMode = true
+		currCfg := c.retention
+		currCfg.EraseInterval = eraseInterval
+		currCfg.RetentionWindowDays = windowDays
+
+		c.retention = currCfg
+
+		return c
+	}
+}
+
+// ErrorCallback sets custom callback that is called if errors occurs
+// during outbox process.
+func OnErrorCallback(callback ErrorCallback) Option {
+	return func(c config) config {
+		c.onError = callback
+		c.retention.ErrorCallback = callback
 
 		return c
 	}

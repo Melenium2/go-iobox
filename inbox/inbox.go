@@ -4,15 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Melenium2/go-iobox/backoff"
+	"github.com/Melenium2/go-iobox/retention"
 )
-
-type Logger interface {
-	Print(...any)
-	Printf(string, ...any)
-}
 
 // Inbox is struct that implement inbox pattern.
 //
@@ -24,13 +21,12 @@ type Logger interface {
 // More about inbox pattern you can read at
 // https://softwaremill.com/microservices-101.
 type Inbox struct {
-	handlers map[string][]Handler
-	storage  *defaultStorage
-	logger   Logger
-	config   config
-	backoff  *backoff.Backoff
+	config config
 
-	onDead ErrorCallback
+	handlers  map[string][]Handler
+	storage   *defaultStorage
+	backoff   *backoff.Backoff
+	retention *retention.Policy
 }
 
 func NewInbox(registry *Registry, conn *sql.DB, opts ...Option) *Inbox {
@@ -41,12 +37,11 @@ func NewInbox(registry *Registry, conn *sql.DB, opts ...Option) *Inbox {
 	}
 
 	return &Inbox{
-		handlers: registry.Handlers(),
-		storage:  newStorage(conn),
-		logger:   cfg.logger,
-		config:   cfg,
-		backoff:  backoff.NewBackoff(),
-		onDead:   cfg.onDeadCallback,
+		handlers:  registry.Handlers(),
+		storage:   newStorage(conn),
+		config:    cfg,
+		backoff:   backoff.NewBackoff(),
+		retention: retention.NewPolicy(conn, tableName, cfg.retention),
 	}
 }
 
@@ -64,6 +59,7 @@ func (i *Inbox) Start(ctx context.Context) error {
 	}
 
 	go i.run(ctx)
+	go i.retention.Start(ctx)
 
 	return nil
 }
@@ -88,7 +84,7 @@ func (i *Inbox) run(ctx context.Context) {
 			}
 
 			if err != nil {
-				i.logger.Print(err.Error())
+				i.config.onError(err)
 			}
 		case <-ctx.Done():
 			return
@@ -108,7 +104,7 @@ func (i *Inbox) iteration() error {
 
 	records, err := i.storage.Fetch(ctx, time.Now().UTC())
 	if err != nil {
-		return err
+		return fmt.Errorf("records not fetched, %w", err)
 	}
 
 	for _, record := range records {
@@ -164,7 +160,7 @@ func (i *Inbox) failOrDead(record *Record, err error) *Record {
 	if attempt >= i.config.maxRetryAttempts {
 		record.Dead()
 
-		i.onDead(record.id, err.Error())
+		i.config.onDead(record.id, err.Error())
 
 		return record
 	}
