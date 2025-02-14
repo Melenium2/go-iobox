@@ -86,7 +86,7 @@ func WithRetention(eraseInterval time.Duration, windowDays int) Option {
 	return func(c config) config {
 		currCfg := c.retention
 		currCfg.EraseInterval = eraseInterval
-		currCfg.RetentionWindow = windowDays
+		currCfg.RetentionWindowDays = windowDays
 
 		c.retention = currCfg
 

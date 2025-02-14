@@ -28,7 +28,7 @@ type Config struct {
 	// at the next iteration.
 	//
 	// Optional. Default: DefaultRetentionWindow.
-	RetentionWindow int
+	RetentionWindowDays int
 	// Callback to handle an error if one occurs while erasing data.
 	//
 	// Optional.
@@ -37,9 +37,9 @@ type Config struct {
 
 func defaultConfig() Config {
 	return Config{
-		EraseInterval:   DefaultEraseInterval,
-		RetentionWindow: DefaultRetentionWindow,
-		ErrorCallback:   nopCallback,
+		EraseInterval:       DefaultEraseInterval,
+		RetentionWindowDays: DefaultRetentionWindow,
+		ErrorCallback:       nopCallback,
 	}
 }
 
@@ -66,8 +66,8 @@ func NewPolicy(conn *sql.DB, tableName string, config ...Config) *Policy {
 		cfg.EraseInterval = config[0].EraseInterval
 	}
 
-	if len(config) > 0 && config[0].RetentionWindow > 0 {
-		cfg.RetentionWindow = config[0].RetentionWindow
+	if len(config) > 0 && config[0].RetentionWindowDays > 0 {
+		cfg.RetentionWindowDays = config[0].RetentionWindowDays
 	}
 
 	if len(config) > 0 && config[0].ErrorCallback != nil {
@@ -89,7 +89,7 @@ func (p *Policy) Start(ctx context.Context) {
 	for {
 		select {
 		case now := <-ticker.C:
-			tailDate := p.tailDate(now, p.config.RetentionWindow)
+			tailDate := p.tailDate(now, p.config.RetentionWindowDays)
 
 			if err := p.iteration(tailDate); err != nil {
 				p.config.ErrorCallback(err)
