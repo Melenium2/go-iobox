@@ -97,7 +97,7 @@ func WithMaxRetryAttempt(maxAttempt int) Option {
 	}
 }
 
-// WithRetention sets the retention configuration for outbox table.
+// WithRetention sets the retention configuration for inbox table.
 //
 // Arguments:
 //
