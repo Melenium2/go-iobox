@@ -53,6 +53,8 @@ type Policy struct {
 }
 
 // NewPolicy creates new Policy to erasing old data at the specified table.
+// The specified table must contain a `created_at` field otherwise the structure
+// will not work.
 //
 // Arguments.
 //
