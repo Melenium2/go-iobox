@@ -22,6 +22,10 @@ type StorageSuite struct {
 	storage *inbox.Storage
 }
 
+func TestStorageSuite(t *testing.T) {
+	suite.Run(t, &StorageSuite{})
+}
+
 func (suite *StorageSuite) SetupSuite() {
 	var (
 		host     = "localhost"
@@ -58,54 +62,44 @@ func (suite *StorageSuite) TearDownTest() {
 func (suite *StorageSuite) TestFetch_Should_fetch_unprocessed_rows_and_set_new_status_to_rows() {
 	initNotProcessedRows(suite.db)
 
-	ctx := context.Background()
-
 	expected := []*inbox.Record{
 		inbox.Record2(),
 		inbox.Record1(),
 	}
 
-	result, err := suite.storage.Fetch(ctx, time.Time{})
+	result, err := suite.storage.Fetch(suite.T().Context(), time.Time{})
 	suite.Require().NoError(err)
 	suite.Assert().Equal(expected, result)
 }
 
 func (suite *StorageSuite) TestFetch_Should_no_fetch_rows_because_table_are_empty() {
-	ctx := context.Background()
-
 	truncateTable(suite.db)
 
-	_, err := suite.storage.Fetch(ctx, time.Time{})
+	_, err := suite.storage.Fetch(suite.T().Context(), time.Time{})
 	suite.Require().ErrorIs(err, inbox.ErrNoRecords)
 }
 
 func (suite *StorageSuite) TestFetch_Should_no_fetch_rows_because_they_are_locked_by_another_operation() {
 	initInProgressRows(suite.db)
 
-	ctx := context.Background()
-
-	_, err := suite.storage.Fetch(ctx, time.Time{})
+	_, err := suite.storage.Fetch(suite.T().Context(), time.Time{})
 	suite.Require().ErrorIs(err, inbox.ErrNoRecords)
 }
 
 func (suite *StorageSuite) TestFetch_Should_no_fetch_rows_if_all_rows_already_processed() {
 	initDoneRows(suite.db)
 
-	ctx := context.Background()
-
-	_, err := suite.storage.Fetch(ctx, time.Time{})
+	_, err := suite.storage.Fetch(suite.T().Context(), time.Time{})
 	suite.Require().ErrorIs(err, inbox.ErrNoRecords)
 }
 
 func (suite *StorageSuite) TestUpdate_Should_update_provided_records_with_new_status() {
 	initInProgressRows(suite.db)
 
-	ctx := context.Background()
-
 	record := inbox.Record1()
 	record.Fail(errors.New("err"))
 
-	err := suite.storage.Update(ctx, []*inbox.Record{record})
+	err := suite.storage.Update(suite.T().Context(), []*inbox.Record{record})
 	suite.Require().NoError(err)
 
 	{
@@ -122,17 +116,18 @@ func (suite *StorageSuite) TestUpdate_Should_update_provided_records_with_new_st
 func (suite *StorageSuite) TestInsert_Should_insert_new_records_to_table() {
 	initInProgressRows(suite.db)
 
-	ctx := context.Background()
+	eventDate := time.Date(2006, 1, 5, 15, 0, 0, 0, time.UTC)
 
-	newRecord, _ := inbox.NewRecord(inbox.ID3(), "3", []byte{})
+	newRecord, err := inbox.NewRecord(inbox.ID3(), "3", []byte{}, eventDate)
+	suite.Require().NoError(err)
 	newRecord = newRecord.WithHandlerKey("3")
 
-	err := suite.storage.Insert(ctx, newRecord)
+	err = suite.storage.Insert(suite.T().Context(), newRecord)
 	suite.Assert().NoError(err)
 
 	{
 		var (
-			sqlStr         = "select status, event_type, handler_key, payload from __inbox_table where id = $1;"
+			sqlStr         = "select status, event_type, handler_key, payload, created_at from __inbox_table where id = $1;"
 			status         = sql.NullString{}
 			eventType      = "3"
 			handlerKey     = "3"
@@ -141,24 +136,24 @@ func (suite *StorageSuite) TestInsert_Should_insert_new_records_to_table() {
 			destType       string
 			destHandlerKey string
 			destPayload    []byte
+			destCreatedAt  time.Time
 		)
-		_ = suite.db.QueryRow(sqlStr, inbox.ID3()).Scan(&destStatus, &destType, &destHandlerKey, &destPayload)
+		_ = suite.db.QueryRow(sqlStr, inbox.ID3()).Scan(&destStatus, &destType, &destHandlerKey, &destPayload, &destCreatedAt)
 		suite.Assert().Equal(status, destStatus)
 		suite.Assert().Equal(eventType, destType)
 		suite.Assert().Equal(payload, destPayload)
 		suite.Assert().Equal(handlerKey, destHandlerKey)
+		suite.Assert().Equal(eventDate, destCreatedAt.UTC())
 	}
 }
 
 func (suite *StorageSuite) TestInsert_Should_not_insert_table_with_same_id_and_handler_key_already_existed_in_the_table() {
 	initInProgressRows(suite.db)
 
-	ctx := context.Background()
-
 	newRecord, _ := inbox.NewRecord(inbox.ID1(), "1", []byte{})
 	newRecord = newRecord.WithHandlerKey("1")
 
-	err := suite.storage.Insert(ctx, newRecord)
+	err := suite.storage.Insert(suite.T().Context(), newRecord)
 	suite.Assert().NoError(err)
 
 	{
@@ -172,10 +167,6 @@ func (suite *StorageSuite) TestInsert_Should_not_insert_table_with_same_id_and_h
 	}
 }
 
-func TestStorageSuite(t *testing.T) {
-	suite.Run(t, &StorageSuite{})
-}
-
 func truncateTable(db *sql.DB) {
 	_, _ = db.Exec("delete from __inbox_table where id in ($1, $2, $3)", inbox.ID1(), inbox.ID2(), inbox.ID3())
 }
@@ -183,12 +174,12 @@ func truncateTable(db *sql.DB) {
 func initNotProcessedRows(db *sql.DB) {
 	_, _ = db.Exec(
 		"insert into __inbox_table (id, event_type, handler_key, payload, created_at) values ($1, $2, $3, $4, $5)",
-		inbox.ID1(), "1", "1", "{}", "2024-06-05 17:55:02.785357",
+		inbox.ID1(), "1", "1", "{}", "2024-06-05 17:55:02.000000",
 	)
 
 	_, _ = db.Exec(
 		"insert into __inbox_table (id, event_type, handler_key, payload, created_at) values ($1, $2, $3, $4, $5)",
-		inbox.ID2(), "1", "2", "{}", "2024-06-05 17:55:01.785357",
+		inbox.ID2(), "1", "2", "{}", "2024-06-05 17:55:01.000000",
 	)
 
 	_, _ = db.Exec(
