@@ -27,7 +27,7 @@ func newDtoRecord(
 		HandlerKey: handlerKey,
 		Payload:    payload,
 		Attempt:    attempt,
-		CreatedAt:  createdAt,
+		CreatedAt:  createdAt.UTC(),
 	}
 }
 
@@ -37,7 +37,15 @@ func makeRecord(dto *dtoRecord) (*Record, error) {
 		return nil, err
 	}
 
-	return newFullRecord(id, Status(dto.Status), dto.EventType, dto.HandlerKey, dto.Payload, dto.Attempt), nil
+	return newFullRecord(
+		id,
+		Status(dto.Status),
+		dto.EventType,
+		dto.HandlerKey,
+		dto.Payload,
+		dto.Attempt,
+		dto.CreatedAt,
+	), nil
 }
 
 func makeRecords(dtos []*dtoRecord) ([]*Record, error) {
@@ -50,8 +58,8 @@ func makeRecords(dtos []*dtoRecord) ([]*Record, error) {
 
 	result := make([]*Record, len(dtos))
 
-	for i := 0; i < len(dtos); i++ {
-		rec, err := makeRecord(dtos[i])
+	for i, curr := range dtos {
+		rec, err := makeRecord(curr)
 		if err != nil {
 			return nil, err
 		}

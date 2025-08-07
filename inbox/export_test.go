@@ -51,6 +51,7 @@ func Record1() *Record {
 		handlerKey: "1",
 		status:     Progress,
 		payload:    []byte("{}"),
+		eventDate:  time.Date(2024, 6, 5, 17, 55, 2, 0, time.UTC),
 	}
 }
 
@@ -70,6 +71,7 @@ func Record2() *Record {
 		handlerKey: "2",
 		status:     Progress,
 		payload:    []byte("{}"),
+		eventDate:  time.Date(2024, 6, 5, 17, 55, 1, 0, time.UTC),
 	}
 }
 
@@ -88,6 +90,7 @@ func Record3() *Record {
 		eventType:  "2",
 		handlerKey: "1",
 		payload:    []byte("{}"),
+		eventDate:  time.Date(2024, 6, 5, 17, 55, 15, 0, time.UTC),
 	}
 }
 

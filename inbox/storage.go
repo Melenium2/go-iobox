@@ -74,7 +74,7 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 		"			updated_at = (now() at time zone 'utc') " +
 		" 		where id = $5 and handler_key = $6;"
 
-	for i := 0; i < len(records); i++ {
+	for i := range len(records) {
 		var (
 			recordStatus    sql.NullString
 			errorMessage    sql.NullString
@@ -114,11 +114,17 @@ func (s *defaultStorage) Update(ctx context.Context, records []*Record) error {
 }
 
 func (s *defaultStorage) Insert(ctx context.Context, record *Record) error {
-	sqlStr := "insert into " + tableName + " (id, event_type, handler_key, payload) " +
-		" values ($1, $2, $3, $4) on conflict (id, handler_key) do nothing;"
+	sqlStr := "insert into " + tableName + " (id, event_type, handler_key, payload, created_at) " +
+		" values ($1, $2, $3, $4, $5) on conflict (id, handler_key) do nothing;"
 
 	_, err := s.conn.ExecContext(
-		ctx, sqlStr, record.id, record.eventType, record.handlerKey, record.payload,
+		ctx,
+		sqlStr,
+		record.id,
+		record.eventType,
+		record.handlerKey,
+		record.payload,
+		record.eventDate,
 	)
 
 	return err

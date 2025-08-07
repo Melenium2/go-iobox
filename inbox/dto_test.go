@@ -18,7 +18,7 @@ func TestMakeRecords_Should_sorts_dtos_by_created_at_in_asc_order(t *testing.T) 
 			EventType:  "1",
 			HandlerKey: "2",
 			Payload:    []byte("{}"),
-			CreatedAt:  time.Date(2000, 1, 1, 1, 15, 0, 0, time.UTC),
+			CreatedAt:  time.Date(2024, 6, 5, 17, 55, 1, 0, time.UTC),
 		},
 		{
 			ID:         inbox.ID1().String(),
@@ -26,7 +26,7 @@ func TestMakeRecords_Should_sorts_dtos_by_created_at_in_asc_order(t *testing.T) 
 			EventType:  "1",
 			HandlerKey: "1",
 			Payload:    []byte("{}"),
-			CreatedAt:  time.Date(2000, 1, 1, 1, 13, 0, 0, time.UTC),
+			CreatedAt:  time.Date(2024, 6, 5, 17, 55, 2, 0, time.UTC),
 		},
 		{
 			ID:         inbox.ID3().String(),
@@ -34,13 +34,13 @@ func TestMakeRecords_Should_sorts_dtos_by_created_at_in_asc_order(t *testing.T) 
 			EventType:  "2",
 			HandlerKey: "1",
 			Payload:    []byte("{}"),
-			CreatedAt:  time.Date(2000, 1, 1, 1, 17, 0, 0, time.UTC),
+			CreatedAt:  time.Date(2024, 6, 5, 17, 55, 15, 0, time.UTC),
 		},
 	}
 
 	expected := []*inbox.Record{
-		inbox.Record1(),
 		inbox.Record2(),
+		inbox.Record1(),
 		inbox.Record3(),
 	}
 

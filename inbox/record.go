@@ -38,6 +38,7 @@ type Record struct {
 	status     Status
 	payload    []byte
 	attempt    attempt
+	eventDate  time.Time
 }
 
 // NewRecord creates new record that can be processed by inbox worker.
@@ -48,15 +49,23 @@ type Record struct {
 //			will ignore all duplicate ids.
 //	eventType - is a topic with which event was published.
 //	payload - the received body.
-func NewRecord(id uuid.UUID, eventType string, payload []byte) (*Record, error) {
+//	eventDate (optional) - when event was occurred.
+func NewRecord(id uuid.UUID, eventType string, payload []byte, eventDate ...time.Time) (*Record, error) {
 	if eventType == "" {
 		return nil, fmt.Errorf("incorrect record event type provided")
+	}
+
+	date := time.Now().UTC()
+
+	if len(eventDate) > 0 && !eventDate[0].IsZero() {
+		date = eventDate[0]
 	}
 
 	return &Record{
 		id:        id,
 		eventType: eventType,
 		payload:   payload,
+		eventDate: date,
 	}, nil
 }
 
@@ -67,6 +76,7 @@ func newFullRecord(
 	handlerKey string,
 	payload []byte,
 	currAttempt int,
+	eventDate time.Time,
 ) *Record {
 	return &Record{
 		id:         id,
@@ -77,6 +87,7 @@ func newFullRecord(
 		attempt: attempt{
 			attempt: currAttempt,
 		},
+		eventDate: eventDate,
 	}
 }
 
@@ -125,5 +136,6 @@ func (r *Record) withHandlerKey(key string) *Record {
 		handlerKey: key,
 		status:     r.status,
 		payload:    b,
+		eventDate:  r.eventDate,
 	}
 }
